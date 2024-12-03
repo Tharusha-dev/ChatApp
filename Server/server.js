@@ -1,11 +1,31 @@
 import { Server } from "socket.io";
 
-const io = new Server({
+import { createServer } from 'node:http';
+import express from 'express';
+import jwt from "jsonwebtoken";
+import cors from 'cors';
+
+const app = express();
+app.use(express.json());
+app.use(cors());
+ 
+const server = createServer(app);
+const io = new Server(server, {
   cors: {
-    origin: "*"
-  }
-  /* options */
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
 });
+
+
+//login
+app.post("/login", (req, res) => {
+  //TODO : check if id in in admin list in db
+  const token = jwt.sign({ id: req.body.id, type: "admin" }, "secret");
+  console.log(token);
+  res.json({ token });
+});
+
 
 // add to buffer
 io.use((socket, next) => {
@@ -20,10 +40,18 @@ io.use((socket, next) => {
 }).on("connection", (socket) => {
   console.log("connected");
   //add to admin or normal rooms
-  if (socket.handshake.query.type === "admin-connect-request") {
+  if (socket.handshake.query.type === "admin-connect-request" && socket.handshake.query.token) {
+
+    let decodedToken = jwt.verify(socket.handshake.query.token, "secret");
+    if (decodedToken.type === "admin") {
+      
     console.log("admin connected");
-    //TODO : VALIDATE
-    socket.join("admin");
+      //TODO : VALIDATE
+      socket.join("admin");
+    } else {
+      next(new Error("Authentication error"));
+    }
+
   }
 
   if (socket.handshake.query.type === "web-connect-request") {
@@ -74,7 +102,7 @@ io.use((socket, next) => {
 // });
 
 console.log("server running on port 8000");
-io.listen(8000);
+server.listen(8000);
 
 //listers
 

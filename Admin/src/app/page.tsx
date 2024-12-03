@@ -1,17 +1,44 @@
 "use client";
 
 import Image from "next/image";
-import {io} from "socket.io-client";
+import {io, Socket} from "socket.io-client";
+import { useEffect, useState } from "react";
 
-const socket = io("http://localhost:8000", {
-  query: { type: "admin-connect-request" }
-});
+
+//temp token  : eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEiLCJ0eXBlIjoiYWRtaW4iLCJpYXQiOjE3MzMyMjIzMzh9.H2pQ5565nYv8EP06dqy2xmGuyWeypgXmS8jHIj_4LRs
+
 
 export default function Home() {
+
+  const [token, setToken] = useState(null);
+  const [socket, setSocket] = useState<Socket | null>(null);
+
+
+async function login() {
+  const res = await fetch("http://localhost:8000/login", {
+    method: "POST",
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ id: "1" })
+  });
+  const data = await res.json();
+  setToken(data.token);
+  const socket = io("http://localhost:8000", {
+    query: { type: "admin-connect-request", token: data.token }
+  });
+  setSocket(socket);
+
+}
+
+
+  //@ts-ignore
   return (
     <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
       <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <button onClick={() => socket.emit("chat-msg", {userToken: "token", adminToken: "token", msg: "msg"})}>Send</button>  
+      
+        <button onClick={() => (socket as any).emit("chat-msg", {userToken: "token", adminToken: token, msg: "msg"})}>Send</button>  
+        <button onClick={login}>Login</button>
         <Image
           className="dark:invert"
           src="/next.svg"
