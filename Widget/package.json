@@ -1,5 +1,5 @@
 {
-  "name": "chat-app-admin",
+  "name": "chat-app",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,8 +9,13 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@radix-ui/react-avatar": "^1.1.1",
+    "@radix-ui/react-dialog": "^1.1.2",
+    "@radix-ui/react-label": "^2.1.0",
+    "@radix-ui/react-slot": "^1.1.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cookies-next": "^5.0.2",
     "lucide-react": "^0.464.0",
     "next": "15.0.3",
     "react": "19.0.0-rc-66855b96-20241106",

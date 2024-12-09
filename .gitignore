@@ -3,4 +3,6 @@ Admin/package-lock.json
 Admin/.next
 Server/node_modules
 Server/package-lock.json
-
+Widget/node_modules
+Widget/package-lock.json
+Widget/.next
