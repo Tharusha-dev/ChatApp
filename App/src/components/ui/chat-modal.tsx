@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 import ChatInputComponent from "./chat-input";
 
 import { ChatInput } from "@/components/ui/chat/chat-input";
+import { Button } from "@chatscope/chat-ui-kit-react";
 
 export default function ChatModal({
   chatId,
@@ -47,6 +48,18 @@ export default function ChatModal({
       getChat();
     }
   }, [refresh]);
+
+  async function disconnect() {
+    await fetch("http://localhost:8000/disconnect", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({chatId, userToken: userToken, party: "web"}),
+    });
+ 
+  }
+
 
   useEffect(() => {
     if (newChat) {
@@ -93,6 +106,9 @@ export default function ChatModal({
 
   return (
     <div className="flex flex-col h-full">
+      {chatData?.disconnect?.time == 0 &&    <Button onClick={() => {
+                disconnect()
+              }}>Disconnect</Button>}
       <ChatMessageList>
         {chat?.length > 0 &&
           chat.map(
@@ -108,7 +124,7 @@ export default function ChatModal({
               >
                 <ChatBubbleAvatar
                   fallback={message?.sender === "web" ? "User" : "You"}
-                  
+
                 />
                 <ChatBubbleMessage
                   variant={message?.sender === "web" ? "received" : "sent"}

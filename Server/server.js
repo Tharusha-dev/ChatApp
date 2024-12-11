@@ -230,12 +230,14 @@ app.post("/disconnect", async (req, res) => {
   await chatsCollection.updateOne({_id: new ObjectId(chatId)}, {$set: {disconnect: {time: Date.now(), party}}});
   
   if(party === "web"){
+    console.log("emiting web disconnected");
     io.to(userToken).emit("party-disconnected",{chatId: chatId, party: "web"} );
   }else{
+    console.log("emiting worker disconnected");
     io.to(userToken).emit("party-disconnected",{chatId: chatId, party: "worker"} );
   }
 
-  io.to(userToken).emit("party-disconnected",{chatId: chatId, party: "web"} );
+  // io.to(userToken).emit("party-disconnected",{chatId: chatId, party: "web"} );
   console.log("disconnect");
   res.json({message: "disconnect"});
 });

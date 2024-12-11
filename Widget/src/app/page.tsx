@@ -187,6 +187,7 @@ const [chatDisconnected, setChatDisconnected] = useState<boolean>(false);
 
   return (
     <div className="">
+      {/* @ts-ignore */}
       <ExpandableChat size="lg" position="middle">
         <ExpandableChatHeader className="flex-col text-center justify-center">
           <h1 className="text-xl font-semibold">Chat with our AI ✨</h1>
@@ -218,6 +219,7 @@ const [chatDisconnected, setChatDisconnected] = useState<boolean>(false);
               if (socket?.connected) {
                 console.log("disconnecting");
                 console.log(socket);
+                console.log(token);
                 // Emit a custom disconnect event before closing
 
                 await fetch("http://localhost:8000/disconnect", {
@@ -244,25 +246,29 @@ const [chatDisconnected, setChatDisconnected] = useState<boolean>(false);
         </ExpandableChatHeader>
         <ExpandableChatBody>
           {!intialized && (
-            <Card>
+            <Card className="m-[10%]">
               <CardHeader>
                 <CardTitle>Start Chat</CardTitle>
               </CardHeader>
-              <CardContent>
-                <p>Ask any question for our AI to answer</p>
-              </CardContent>
-              <CardFooter>
+ 
+              <CardFooter className="flex flex-col gap-4 items-start">
+                <div className="w-full">
                 <span>Name</span>
                 <Input
                   type="text"
                   placeholder="What should we call you?"
                   onChange={(e) => setName(e.target.value)}
                 />
-                <Input
+                </div>
+               <div className="w-full">
+                <span>Describe your issue</span>
+               <Input
                   type="text"
                   placeholder="Describe your issue"
                   onChange={(e) => setInitialMessage(e.target.value)}
                 />
+               </div>
+              
                 <Button onClick={() => initialMessage && join(initialMessage)}>
                   Start Chat
                 </Button>
@@ -299,7 +305,7 @@ const [chatDisconnected, setChatDisconnected] = useState<boolean>(false);
             </ChatMessageList>
           )}
         </ExpandableChatBody>
-        <ExpandableChatFooter>
+        <ExpandableChatFooter className="flex flex-col gap-[5px] items-start">
           {chatDisconnected && (
             <div className="flex flex-col items-center justify-center">
               <p>The worker has disconnected</p>
@@ -311,7 +317,7 @@ const [chatDisconnected, setChatDisconnected] = useState<boolean>(false);
               setChatMsg(e.target.value);
             }}
           />
-          <Button type="submit" size="icon" onClick={() => sendChat()} disabled={chatDisconnected}>
+          <Button type="button" size="icon" className="w-1/5" onClick={() => sendChat()} disabled={chatDisconnected}>
             send
             {/* <Send className="size-4" /> */}
           </Button>

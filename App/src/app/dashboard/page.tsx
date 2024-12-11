@@ -199,11 +199,11 @@ export default function Dashboard() {
     
               userName={workerChats.find(chat => chat.chatId === activeChat)?.webName}
             />
-            <ConversationHeader.Actions>
+            {/* <ConversationHeader.Actions>
               <Button onClick={() => {
                 disconnect()
               }}>Disconnect</Button>
-            </ConversationHeader.Actions>
+            </ConversationHeader.Actions> */}
           </ConversationHeader>
           <MessageList>
             

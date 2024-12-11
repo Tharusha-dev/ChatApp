@@ -33,7 +33,7 @@
         
         iframe.addEventListener("load", () => widgetStyle.display = "block" );
         
-        const widgetUrl = `http://localhost:3002`;
+        const widgetUrl = `http://localhost:3000`;
         
         iframe.src = widgetUrl;
 
