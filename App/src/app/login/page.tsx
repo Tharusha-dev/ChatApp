@@ -15,6 +15,7 @@ import { useState, useEffect } from "react";
 import { setCookie, hasCookie, getCookie } from "cookies-next/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { API_URL } from "@/lib/config";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -34,7 +35,7 @@ export default function Login() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("http://localhost:8000/worker/login", {
+      const res = await fetch(`${API_URL}/worker/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

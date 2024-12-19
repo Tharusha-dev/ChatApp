@@ -22,16 +22,25 @@ import {
   ConversationHeader,
   MessageSeparator,
 } from "@chatscope/chat-ui-kit-react";
-
+import ChatInfoCard from "@/components/ui/chatInfoCard";
 import SettingsDropdown from "@/components/ui/settings";
+import { API_URL } from "@/lib/config";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ChevronDown } from "lucide-react";
 
-export default function Dashboard() {
+export default function ChatDashboard() {
   const [bufferUsers, setBufferUsers] = useState<any[]>([]);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [workerChats, setWorkerChats] = useState<any[]>([]);
   const [activeChat, setActiveChat] = useState<string | null>(null);
   const [chatDisconnected, setChatDisconnected] = useState<boolean>(false);
   const [conversationSearch, setConversationSearch] = useState<string>("");
+  const [selectedDomains, setSelectedDomains] = useState<string[]>([]);
 
   const workerToken = getCookie("userToken") as string;
 
@@ -64,7 +73,7 @@ export default function Dashboard() {
       //   }
       // });
 
-      const chatsRes = await fetch(`http://localhost:8000/worker/get-chats`, {
+      const chatsRes = await fetch(`${API_URL}/worker/get-chats`, {
         headers: {
           auth: getCookie("userToken") as string,
         },
@@ -81,7 +90,8 @@ export default function Dashboard() {
 
     getData();
 
-    const socket = io("http://localhost:8000", {
+    const socket = io(`${API_URL}`, {
+      path: "/socket.io",
       query: { type: "worker-connect-request", token: getCookie("userToken") },
     });
     if (socket) {
@@ -126,25 +136,31 @@ export default function Dashboard() {
 
 
 
-  async function disconnect() {
-    await fetch("http://localhost:8000/disconnect", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({chatId: activeChat, userToken: workerToken, party: "worker"}),
-    });
- 
-  }
 
 
+
+  const getUniqueDomains = (chats: any[]) => {
+    return Array.from(new Set(chats.map(chat => chat.websiteDomain))).filter(Boolean);
+  };
 
   const filteredChats = workerChats.filter(chat => 
-    chat.webName.toLowerCase().includes(conversationSearch.toLowerCase())
+    chat.webName.toLowerCase().includes(conversationSearch.toLowerCase()) &&
+    (selectedDomains.length === 0 || selectedDomains.includes(chat.websiteDomain))
   );
 
+  const groupChatsByEmail = (chats: any[]) => {
+    return chats.reduce((groups: { [key: string]: any[] }, chat) => {
+      const email = chat.webEmail || 'No Email';
+      if (!groups[email]) {
+        groups[email] = [];
+      }
+      groups[email].push(chat);
+      return groups;
+    }, {});
+  };
+
   return (
-    <div className="w-screen h-screen flex flex-col p-[1%]">
+    <div className="w-full h-full flex flex-col">
       <div className="top-bar w-full h-10  flex items-center justify-between mb-[1%]">
         {socket && (
           <RequestsPopup
@@ -161,30 +177,69 @@ export default function Dashboard() {
       <MainContainer
         responsive
         style={{
-          height: "10000px",
+          height: "100%",
         }}
       >
-        <Sidebar position="left">
+        <Sidebar position="left" style={{width: "27%", maxWidth: "27%"}}>
           <Search placeholder="Search..." onChange={(e) => setConversationSearch(e)} onClearClick={() => setConversationSearch("")} />
+          
+          <div className="p-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="w-full flex justify-between items-center">
+                  {selectedDomains.length === 0 
+                    ? "Filter by Website" 
+                    : `${selectedDomains.length} website${selectedDomains.length > 1 ? 's' : ''} selected`}
+                  <ChevronDown className="h-4 w-4 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-[200px] max-h-[300px] overflow-y-auto">
+                {getUniqueDomains(workerChats).map((domain) => (
+                  <DropdownMenuCheckboxItem
+                    key={domain}
+                    checked={selectedDomains.includes(domain)}
+                    onCheckedChange={(checked) => {
+                      setSelectedDomains(prev => 
+                        checked 
+                          ? [...prev, domain]
+                          : prev.filter(d => d !== domain)
+                      );
+                    }}
+                  >
+                    {domain}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
           <ConversationList>
-            {filteredChats.map((chat) => {
-              return (
-                <Conversation
-                  info={chat?.initialMessage?.msg}
-                  lastSenderName={chat?.webName}
-                  name={chat?.webName}
-                  onClick={() => {
-                    setActiveChat(chat.chatId);
-                    console.log("active chat:", chat.chatId);
-                  }}
-                >
-                  <Avatar
-                    name="Lilly"
-                    src="/profile-default.svg"
+            {Object.entries(groupChatsByEmail(filteredChats)).map(([email, chats]) => (
+              <div key={email}>
+                <MessageSeparator content={email} style={{
+                  backgroundColor: '#f5f5f5',
+                  padding: '8px',
+                  margin: '8px 0',
+                  borderRadius: '4px',
+                  fontSize: '0.9em',
+                  color: '#666'
+                }}/>
+                {chats.map((chat) => (
+                  <ChatInfoCard
+                    key={chat.chatId}
+                    webName={chat?.webName}
+                    webEmail={chat?.webEmail}
+                    metadata={chat?.metadata}
+                    websiteDomain={chat?.websiteDomain}
+                    isDisconnected={chat?.disconnect?.time > 0 || false}
+                    onClick={() => {
+                      setActiveChat(chat.chatId);
+                      console.log("active chat:", chat.chatId);
+                    }}
                   />
-                </Conversation>
-              );
-            })}
+                ))}
+              </div>
+            ))}
           </ConversationList>
         </Sidebar>
 
@@ -214,6 +269,7 @@ export default function Dashboard() {
             newChat={newChats}
             workerToken={getCookie("userToken") as string}
             refresh={refreshActiveChat}
+            setWorkerChats={setWorkerChats}
           />
         )}
           </MessageList>
@@ -221,8 +277,6 @@ export default function Dashboard() {
         </ChatContainer>
       </MainContainer>
 
-      <div className="grid grid-cols-[30%,70%] h-full">
-      </div>
     </div>
   );
 }

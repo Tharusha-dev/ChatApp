@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { API_URL } from "@/lib/config";
 
 export default function Signup() {
 const [email, setEmail] = useState("");
@@ -18,7 +19,7 @@ async function signup() {
     setLoading(true);
     setSuccessMessage("");
     try {   
-        const res = await fetch("http://localhost:8000/worker/signup", {
+        const res = await fetch(`${API_URL}/worker/signup`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

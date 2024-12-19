@@ -36,7 +36,9 @@ export default function RequestsPopup({bufferUsers, socket, setWorkerChats, setB
             webToken: user.userToken,
             chatId: user.chatId,
             webName: user.webName,
-            initialMessage: user.initialMessage
+            initialMessage: user.initialMessage,
+            metadata: user.metadata,
+            webEmail: user.webEmail
         }));
         setBufferUsers((prevUsers: any[]) => 
             prevUsers.filter(bufferUser => bufferUser.chatId !== user.chatId)
@@ -50,10 +52,15 @@ export default function RequestsPopup({bufferUsers, socket, setWorkerChats, setB
 
     console.log(bufferUsers);
 
+    useEffect(() => {
+        console.log("bufferUsers changed");
+        console.log(bufferUsers);
+    }, [bufferUsers]);
+
     return <Dialog>
         <DialogTrigger>
           
-             <div>
+             <div className="relative">
                 { bufferUsers?.length> 0 &&
               <div className="num absolute text-black left-[90%] -top-[15%] bg-white h-5 w-5 border border-black flex items-center justify-center rounded-full">
                         {bufferUsers?.length}

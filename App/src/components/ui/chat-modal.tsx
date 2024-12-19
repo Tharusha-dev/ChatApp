@@ -14,26 +14,30 @@ import ChatInputComponent from "./chat-input";
 
 import { ChatInput } from "@/components/ui/chat/chat-input";
 import { Button } from "@chatscope/chat-ui-kit-react";
+import { API_URL } from "@/lib/config";
 
 export default function ChatModal({
   chatId,
   newChat,
   workerToken,
-  refresh
+  refresh,
+  setWorkerChats
 }: {
   chatId: string;
   newChat: any;
   workerToken: string;
   refresh: boolean;
+  setWorkerChats: (chats: any) => void;
 }) {
   const [chat, setChat] = useState<any[]>([]);
   const [userToken, setUserToken] = useState<string>("");
   const [chatData, setChatData] = useState<any>({});
   async function getChat() {
-    const res = await fetch(`http://localhost:8000/worker/get-chat`, {
+    const res = await fetch(`${API_URL}/worker/get-chat`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "auth": workerToken
       },
       body: JSON.stringify({ chatId }),
     });
@@ -50,14 +54,19 @@ export default function ChatModal({
   }, [refresh]);
 
   async function disconnect() {
-    await fetch("http://localhost:8000/disconnect", {
+    await fetch(`${API_URL}/disconnect`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "auth": workerToken
       },
       body: JSON.stringify({chatId, userToken: userToken, party: "web"}),
     });
- 
+    setWorkerChats((prevChats: any) => prevChats.map((chat: any) => 
+      chat.chatId === chatId 
+        ? {...chat, disconnect: {time: Date.now()}}
+        : chat
+    ));
   }
 
 
@@ -85,7 +94,7 @@ export default function ChatModal({
 
   async function sendMessage(msg: string) {
     console.log("sendMessage:", msg);
-    const res = await fetch(`http://localhost:8000/worker/chat-msg`, {
+    const res = await fetch(`${API_URL}/worker/chat-msg`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

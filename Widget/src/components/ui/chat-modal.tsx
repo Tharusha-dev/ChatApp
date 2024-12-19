@@ -45,7 +45,7 @@ export default function ChatModal({
     console.log("chat:", chat);
 
     async function getChat() {
-      const res = await fetch(`http://localhost:8000/worker/get-chat`, {
+      const res = await fetch(`https://app.chatzu.ai/api/worker/get-chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -62,7 +62,7 @@ export default function ChatModal({
 
   async function sendMessage(msg: string) {
     console.log("sendMessage:", msg);
-    const res = await fetch(`http://localhost:8000/worker/chat-msg`, {
+    const res = await fetch(`https://app.chatzu.ai/api/worker/chat-msg`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
