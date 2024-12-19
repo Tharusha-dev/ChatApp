@@ -52,7 +52,7 @@ export default function Login() {
       
       const data = await res.json();
       setCookie("userToken", data.token);
-      router.push("/dashboard");
+      router.push("/");
     } catch (error) {
       console.error(error);
       setError("An error occurred. Please try again.");

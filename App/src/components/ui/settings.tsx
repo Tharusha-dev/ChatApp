@@ -25,7 +25,7 @@ export default function SettingsDropdown() {
       <DropdownMenuSeparator />
       <DropdownMenuItem onClick={() => {
         deleteCookie('userToken');
-        router.push('/');
+        router.push('/login');
       }}>
       
       <LogOut className="size-4" />

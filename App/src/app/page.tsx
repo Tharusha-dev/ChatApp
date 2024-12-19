@@ -20,15 +20,13 @@ export default function Home() {
 
   const initializeStore = useStore((state) => state.initializeStore);
 
-  // useEffect(() => {
-  //   const token = getCookie('userToken');
-  //   console.log("check this")
-  //   console.log(token);
-  //   if(!token || token === '' || token === 'undefined') router.push('/login');
-  //   if(token) {
-  //     router.push('/dashboard');
-  //   }
-  // }, []);
+  useEffect(() => {
+    const token = getCookie('userToken');
+    console.log("check this")
+    console.log(token);
+    if(!token || token === '' || token === 'undefined') router.push('/login');
+ 
+  }, []);
   const [activeTab, setActiveTab] = useState('chat')
 
   useEffect(() => {
