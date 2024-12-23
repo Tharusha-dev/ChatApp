@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown } from "lucide-react";
 
-export default function ChatDashboard() {
+export default function ChatDashboard({socketIn, workerChatsIn, bufferUsersIn, refreshActiveChat, newChatsIn}: {socketIn: Socket | null, workerChatsIn: any[], bufferUsersIn: any[], refreshActiveChat: boolean, newChatsIn: any[]}) {
   const [bufferUsers, setBufferUsers] = useState<any[]>([]);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [workerChats, setWorkerChats] = useState<any[]>([]);
@@ -45,84 +45,64 @@ export default function ChatDashboard() {
   const workerToken = getCookie("userToken") as string;
 
   const [newChats, setNewChats] = useState<any[]>([]);
-  const [refreshActiveChat, setRefreshActiveChat] = useState<boolean>(false);
+  // const [refreshActiveChat, setRefreshActiveChat] = useState<boolean>(false);
   // useEffect(() => {
   //   console.log("worker chats:", workerChats);
   // }, [workerChats]);
 
-  function updateBuffer(data: any) {
-    console.log("updating buffer, current state:", bufferUsers);
-    setBufferUsers((prevUsers) => {
-      const newState = [...prevUsers, data];
-      return newState;
-    });
-  }
+  // function updateBuffer(data: any) {
+  //   console.log("updating buffer, current state:", bufferUsers);
+  //   setBufferUsers((prevUsers) => {
+  //     const newState = [...prevUsers, data];
+  //     return newState;
+  //   });
+  // }
 
-  function handleChat(data: any) {
-    console.log("handling chat:", data);
-    setNewChats((prevChats) => [...prevChats, data]);
-    // setWorkerChats(prevChats => [...prevChats, data]);
-  }
 
   useEffect(() => {
+    console.log("worker chats:", workerChatsIn);
+    setWorkerChats(workerChatsIn);
+  }, [workerChatsIn]);
 
-    async function getData() {
-      // const bufferRes = await fetch(`http://localhost:8000/worker/get-buffer`, {
-      //   headers: {
-      //     "auth": getCookie("userToken") as string
-      //   }
+  useEffect(() => {
+    setNewChats(newChatsIn);
+  }, [newChatsIn]);
+ 
+
+useEffect(() => {
+  setBufferUsers(bufferUsersIn);
+}, [bufferUsersIn]);
+
+  useEffect(() => {
+    if (socketIn) {
+      console.log("Socket state changed");
+      setSocket(socketIn);
+
+      // socketIn.on("connect", () => {
+      //   console.log("Socket connected in useEffect");
       // });
 
-      const chatsRes = await fetch(`${API_URL}/worker/get-chats`, {
-        headers: {
-          auth: getCookie("userToken") as string,
-        },
-      });
+      // socketIn.on("buffer-request", (data) => {
+      //   // debug(data);
+      //   console.log(data);
+      //   updateBuffer(data);
+      // });
 
-      // const bufferData = await bufferRes.json();
-      // setBufferUsers(bufferData);
-
-      const chatsData = await chatsRes.json();
-      setWorkerChats(
-        chatsData.map((chat: any) => ({ ...chat, chatId: chat._id.toString() }))
-      );
-    }
-
-    getData();
-
-    const socket = io(`${API_URL}`, {
-      path: "/socket.io",
-      query: { type: "worker-connect-request", token: getCookie("userToken") },
-    });
-    if (socket) {
-      console.log("Socket state changed");
-      setSocket(socket);
-
-      socket.on("connect", () => {
-        console.log("Socket connected in useEffect");
-      });
-
-      socket.on("buffer-request", (data) => {
-        // debug(data);
-        console.log(data);
-        updateBuffer(data);
-      });
-
-      socket.on("party-disconnected", (data) => {
-        console.log("party disconnected:", data);
-        setChatDisconnected(true);
+      // socketIn.on("party-disconnected", (data) => {
+      //   console.log("party disconnected:", data);
+      //   setChatDisconnected(true);
         
-        setRefreshActiveChat(true);
-      });
+      //   setRefreshActiveChat(true);
+      // });
 
-      socket.on("chat-msg", (data) => {
-        console.log("chat msg:", data);
-        if(data?.msg?.sender == "web"){
-          handleChat(data);
-        }
-      });
+      // socketIn.on("chat-msg", (data) => {
+      //   console.log("chat msg:", data);
+      //   if(data?.msg?.sender == "web"){
+      //     handleChat(data);
+      //   }
+      // });
     }
-  }, []);
+  }, [socketIn]);
 
 
 

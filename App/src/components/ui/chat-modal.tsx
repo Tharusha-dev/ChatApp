@@ -15,13 +15,15 @@ import ChatInputComponent from "./chat-input";
 import { ChatInput } from "@/components/ui/chat/chat-input";
 import { Button } from "@chatscope/chat-ui-kit-react";
 import { API_URL } from "@/lib/config";
+import { Input } from "@/components/ui/input";
 
+import { Pencil } from "lucide-react";
 export default function ChatModal({
   chatId,
   newChat,
   workerToken,
   refresh,
-  setWorkerChats
+  setWorkerChats,
 }: {
   chatId: string;
   newChat: any;
@@ -32,12 +34,17 @@ export default function ChatModal({
   const [chat, setChat] = useState<any[]>([]);
   const [userToken, setUserToken] = useState<string>("");
   const [chatData, setChatData] = useState<any>({});
+  const [editingMessage, setEditingMessage] = useState<{
+    timestamp: number;
+    msg: string;
+  } | null>(null);
+
   async function getChat() {
     const res = await fetch(`${API_URL}/worker/get-chat`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "auth": workerToken
+        auth: workerToken,
       },
       body: JSON.stringify({ chatId }),
     });
@@ -58,49 +65,65 @@ export default function ChatModal({
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "auth": workerToken
+        auth: workerToken,
       },
-      body: JSON.stringify({chatId, userToken: userToken, party: "web"}),
+      body: JSON.stringify({ chatId, userToken: userToken, party: "web" }),
     });
-    setWorkerChats((prevChats: any) => prevChats.map((chat: any) => 
-      chat.chatId === chatId 
-        ? {...chat, disconnect: {time: Date.now()}}
-        : chat
-    ));
+    setWorkerChats((prevChats: any) =>
+      prevChats.map((chat: any) =>
+        chat.chatId === chatId
+          ? { ...chat, disconnect: { time: Date.now() } }
+          : chat
+      )
+    );
   }
-
 
   useEffect(() => {
     if (newChat) {
-      // setChat(prevChat => [...prevChat, newChat]);
-      console.log("newChat:", newChat);
-      console.log("chat test:", chat);
-
       const newChats = newChat
         ?.map((chat: any) => (chat.chatId === chatId ? chat.msg : null))
         .filter(Boolean);
-      console.log("newChats:", newChats);
 
-      setChat((prevChat) => [...prevChat, newChats[newChats.length - 1]]); //TODO :  need to check if all these msg are prestn by checnig msg and timesta,mp and only append thiose that are not
+      if (newChats.length > 0) {
+        const latestMsg = newChats[newChats.length - 1];
+
+        setChat((prevChat) => {
+          // Check if message with same timestamp exists
+          const existingMsgIndex = prevChat.findIndex(
+            (msg) => msg.timestamp === latestMsg.timestamp
+          );
+
+          if (existingMsgIndex !== -1) {
+            // Replace existing message
+            const updatedChat = [...prevChat];
+            updatedChat[existingMsgIndex] = latestMsg;
+            return updatedChat;
+          } else {
+            // Append new message
+            return [...prevChat, latestMsg];
+          }
+        });
+      }
     }
   }, [newChat]);
 
   useEffect(() => {
     console.log("chat:", chat);
 
-
     getChat();
   }, []);
 
   async function sendMessage(msg: string) {
-    console.log("sendMessage:", msg);
+    const timestamp = Date.now();
+    console.log("sendMessage:", msg, timestamp);
+    
     const res = await fetch(`${API_URL}/worker/chat-msg`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        msg: { msg, timestamp: Date.now() },
+        msg: { msg, timestamp },
         chatId,
         workerToken,
         userToken,
@@ -109,15 +132,52 @@ export default function ChatModal({
 
     setChat((prevChat) => [
       ...prevChat,
-      { msg, sender: "worker", timestamp: Date.now() },
+      { msg, sender: "worker", timestamp },
     ]);
   }
 
+  const handleEditMessage = async (timestamp: number, newMessage: string) => {
+    // Update the message in the chats array
+    const payload = {
+      chatId,
+      workerToken,
+      userToken,
+      msg: {
+        msg: newMessage,
+        timestamp: timestamp,
+      },
+    };
+    console.log("Sending payload:", payload);
+
+    // socket.current.emit("chat-msg", payload);
+    // socket.current.emit("worker-buffer-accept", payload);
+    fetch(`${API_URL}/worker/chat-msg`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    setChat((prevChat) =>
+      prevChat.map((chat) =>
+        chat.timestamp === timestamp ? { ...chat, msg: newMessage } : chat
+      )
+    );
+    setEditingMessage(null);
+  };
+
   return (
     <div className="flex flex-col h-full">
-      {chatData?.disconnect?.time == 0 &&    <Button onClick={() => {
-                disconnect()
-              }}>Disconnect</Button>}
+      {chatData?.disconnect?.time == 0 && (
+        <Button
+          onClick={() => {
+            disconnect();
+          }}
+        >
+          Disconnect
+        </Button>
+      )}
       <ChatMessageList>
         {chat?.length > 0 &&
           chat.map(
@@ -125,21 +185,32 @@ export default function ChatModal({
               timestamp: number;
               msg: string;
               sender: "web" | "worker";
-             
             }) => (
               <ChatBubble
                 key={message?.timestamp}
                 variant={message?.sender === "web" ? "received" : "sent"}
               >
                 <ChatBubbleAvatar
-                  fallback={message?.sender === "web" ? "User" : "You"}
-
+                  fallback={message?.sender === "web" ? "Web" : "You"}
                 />
-                <ChatBubbleMessage
-                  variant={message?.sender === "web" ? "received" : "sent"}
-                >
-                  {message?.msg}
-                </ChatBubbleMessage>
+                <div className="relative group">
+                  <ChatBubbleMessage
+                    variant={message?.sender === "web" ? "received" : "sent"}
+                  >
+                    {message?.msg}
+                    {message?.sender !== "web" && (
+                      <button
+                        onClick={() => {
+                          setEditingMessage(message);
+                          console.log("editingMessage:", message);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 absolute -left-6 top-1/2 -translate-y-1/2 p-1 hover:bg-black rounded"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                    )}
+                  </ChatBubbleMessage>
+                </div>
               </ChatBubble>
             )
           )}
@@ -147,11 +218,48 @@ export default function ChatModal({
 
       {chatData?.disconnect?.time > 0 && (
         <div className="flex justify-center items-center h-full">
-          <p className="text-center text-gray-500">Chat disconnected at {new Date(chatData?.disconnect?.time).toLocaleString()}</p>
+          <p className="text-center text-gray-500">
+            Chat disconnected at{" "}
+            {new Date(chatData?.disconnect?.time).toLocaleString()}
+          </p>
         </div>
       )}
-
-      <ChatInputComponent sendMessage={sendMessage} disabled={chatData?.disconnect?.time > 0} />
+      {editingMessage && (
+        <div className="w-full p-2 bg-gray-50 border-t">
+          <p className="text-sm text-gray-500 mb-2">Edit message:</p>
+          <div className="flex gap-2">
+            <Input
+              value={editingMessage.msg}
+              onChange={(e) =>
+                setEditingMessage((prev) =>
+                  prev ? { ...prev, msg: e.target.value } : null
+                )
+              }
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleEditMessage(
+                    editingMessage.timestamp,
+                    editingMessage.msg
+                  );
+                }
+              }}
+            />
+            <Button
+              onClick={() =>
+                handleEditMessage(editingMessage.timestamp, editingMessage.msg)
+              }
+            >
+              Save
+            </Button>
+            <Button onClick={() => setEditingMessage(null)}>Cancel</Button>
+          </div>
+        </div>
+      )}
+      <ChatInputComponent
+        sendMessage={sendMessage}
+        disabled={chatData?.disconnect?.time > 0}
+      />
     </div>
   );
 }

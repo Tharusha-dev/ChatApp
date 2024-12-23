@@ -23,18 +23,25 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Suspense } from "react";
+import { Pencil } from "lucide-react";
 
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams } from "next/navigation";
 
 export default function Home() {
-  // const API_URL = "https://app.chatzu.ai/api";
-  const queryParams = useSearchParams()
-  const websiteId = queryParams.get("websiteId")
-  const currentUrl = queryParams.get("currentUrl")
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <HomeContent />
+    </Suspense>
+  );
+}
+
+function HomeContent() {
+  const queryParams = useSearchParams();
+  const websiteId = queryParams.get("websiteId");
+  const currentUrl = queryParams.get("currentUrl");
 
   const API_URL = "http://localhost:8000";
-
-  
 
   const [token, setToken] = useState<string | null>(null);
   // const [socket, setSocket] = useState<Socket | null>(null);
@@ -45,11 +52,15 @@ export default function Home() {
   const [chats, setChats] = useState<any[]>([]);
   const [name, setName] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
-const [chatDisconnected, setChatDisconnected] = useState<boolean>(false);
-  const initalChatSequence = useRef<"name" | "email" | "issue" | "join" |"chat">("name");
+  const [chatDisconnected, setChatDisconnected] = useState<boolean>(false);
+  const initalChatSequence = useRef<
+    "welcome" | "name" | "email" | "issue" | "join" | "chat"
+  >("welcome");
   // let socket = useRef<Socket | null>(null);
   const [metadata, setMetadata] = useState<any>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
+
+  const [waitingForWorker, setWaitingForWorker] = useState<boolean>(false);
 
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
 
@@ -79,6 +90,55 @@ const [chatDisconnected, setChatDisconnected] = useState<boolean>(false);
       }
     };
   }, [chatMsg, handleTypingTimeout]);
+
+  // Add a ref for the message list
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Add scroll to bottom function
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
+  // Add effect to scroll when messages change
+  useEffect(() => {
+    scrollToBottom();
+  }, [chats, scrollToBottom]);
+
+  const [editingMessage, setEditingMessage] = useState<{ timestamp: number; msg: string } | null>(null);
+
+  // Add this function to handle message editing
+  const handleEditMessage = async (timestamp: number, newMessage: string) => {
+    // Update the message in the chats array
+ const payload = {
+  userToken: token,
+      msg: {
+        msg: newMessage,
+        timestamp: timestamp,
+      },
+      chatId,
+ }
+  console.log("Sending payload:", payload);
+
+  // socket.current.emit("chat-msg", payload);
+  // socket.current.emit("worker-buffer-accept", payload);
+  fetch(`${API_URL}/chat-msg`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+
+    setChats(prevChats => 
+      prevChats.map(chat => 
+        chat.timestamp === timestamp 
+          ? { ...chat, msg: newMessage }
+          : chat
+      )
+    );
+    setEditingMessage(null);
+  };
 
   async function join(initialMessage: string) {
     console.log("login");
@@ -131,16 +191,31 @@ const [chatDisconnected, setChatDisconnected] = useState<boolean>(false);
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({websiteId}),
-    
+      body: JSON.stringify({ websiteId }),
     });
 
-   let dataAvailable = await resAvailabe.json();
-   if(dataAvailable?.available){
-    setStatusMsg("An agent will be in touch shortly");
-   } else {
-    setStatusMsg(metadata?.msg_4 || "No agents available");
-   }
+    let dataAvailable = await resAvailabe.json();
+    if (dataAvailable?.available) {
+      setWaitingForWorker(true);
+      // setStatusMsg("An agent will be in touch shortly");
+      setChats((prevChats) => [
+        ...prevChats,
+        {
+          msg: "An agent will be in touch shortly",
+          timestamp: Date.now(),
+          sender: "worker",
+        },
+      ]);
+    } else {
+      setChats((prevChats) => [
+        ...prevChats,
+        {
+          msg: "All agents are currently busy, we will responde to you by email within the next 1-6 hours",
+          timestamp: Date.now(),
+          sender: "worker",
+        },
+      ]);
+    }
     // setChats([
     //   {
     //     msg: initialMessage,
@@ -156,34 +231,51 @@ const [chatDisconnected, setChatDisconnected] = useState<boolean>(false);
 
       console.log("initalChatSequence", initalChatSequence, chatMsg);
 
-
-      if(initalChatSequence.current === "name"){
+      if (initalChatSequence.current === "welcome") {
+        setChats((prevChats) => [
+          ...prevChats,
+          {
+            msg: chatMsg,
+            timestamp: Date.now(),
+            sender: "web",
+          },
+        ]);
+        initalChatSequence.current = "name";
+      } else if (initalChatSequence.current === "name") {
         setName(chatMsg);
-        setChats(prevChats => [...prevChats, {
-          msg: chatMsg,
-          timestamp: Date.now(),
-          sender: "web",
-        }])
+
+        setChats((prevChats) => [
+          ...prevChats,
+          {
+            msg: chatMsg,
+            timestamp: Date.now(),
+            sender: "web",
+          },
+        ]);
         initalChatSequence.current = "email";
-      }
-
-      else if(initalChatSequence.current === "email"){
+      } else if (initalChatSequence.current === "email") {
         setEmail(chatMsg);
-        setChats(prevChats => [...prevChats, {
-          msg: chatMsg,
-          timestamp: Date.now(),
-          sender: "web",
-        }])
-        initalChatSequence.current = "issue";
-      } 
 
-      else if(initalChatSequence.current === "issue"){
         setInitialMessage(chatMsg);
-        setChats(prevChats => [...prevChats, {
-          msg: chatMsg,
-          timestamp: Date.now(),
-          sender: "web",
-        }])
+        setChats((prevChats) => [
+          ...prevChats,
+          {
+            msg: chatMsg,
+            timestamp: Date.now(),
+            sender: "web",
+          },
+        ]);
+        initalChatSequence.current = "issue";
+      } else if (initalChatSequence.current === "issue") {
+        setInitialMessage(chatMsg);
+        setChats((prevChats) => [
+          ...prevChats,
+          {
+            msg: chatMsg,
+            timestamp: Date.now(),
+            sender: "web",
+          },
+        ]);
         initalChatSequence.current = "join";
       }
 
@@ -205,7 +297,7 @@ const [chatDisconnected, setChatDisconnected] = useState<boolean>(false);
 
     // socket.current.emit("chat-msg", payload);
     // socket.current.emit("worker-buffer-accept", payload);
-      fetch(`${API_URL}/chat-msg`, {
+    fetch(`${API_URL}/chat-msg`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -214,131 +306,161 @@ const [chatDisconnected, setChatDisconnected] = useState<boolean>(false);
     });
   }
 
-
-
-
-
   function handleChat(data: any) {
-
     console.log("handling chat:", data);
-    setChats((prevChats) => [...prevChats, data?.msg]);
-    // setWorkerChats(prevChats => [...prevChats, data]);
+
+      setWaitingForWorker(false);
+
+    setChats((prevChats) => {
+      const messageIndex = prevChats.findIndex(
+        (chat) => chat?.timestamp === data?.msg?.timestamp
+      );
+      
+      if (messageIndex !== -1) {
+        // Replace existing message
+        const newChats = [...prevChats];
+        newChats[messageIndex] = {
+          ...data?.msg,
+          timestamp: data?.msg?.timestamp
+        };
+        return newChats;
+      } else {
+        // Append new message
+        return [...prevChats, {
+          ...data?.msg,
+          timestamp: data?.msg?.timestamp
+        }];
+      }
+    });
   }
- async function handleBeforeUnload() {
+  async function handleBeforeUnload() {
     const data = {
       chatId,
       userToken: token,
-      party: "web"
+      party: "web",
     };
-    
+
     await fetch(`${API_URL}/disconnect`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({chatId, userToken: token}),
+      body: JSON.stringify({ chatId, userToken: token }),
     });
     socket?.disconnect();
   }
 
-
-  async function initialChatSequence(intialMsg: string = "", msg_1:string = ""){
-
-    if(initalChatSequence.current === "chat"){
+  async function initialChatSequence(
+    intialMsg: string = "",
+    msg_1: string = ""
+  ) {
+    if (initalChatSequence.current === "chat") {
       return;
-    }
-
-      else if(initalChatSequence.current === "join"){
+    } else if (initalChatSequence.current === "join") {
       // setInitalChatSequence("name");
       join(intialMsg);
-    }
+    } else if (initalChatSequence.current === "welcome" && intialMsg === "") {
+      setChats((prevChats) => [
+        ...prevChats,
+        {
+          msg: msg_1 || "Welcome to the chat?",
+          timestamp: Date.now(),
+          sender: "worker",
+        },
+      ]);
 
-    else if(initalChatSequence.current === "name"){
-      setChats(prevChats => [...prevChats, {
-        msg: msg_1 || "what is your name?",
-        timestamp: Date.now(),
-        sender: "worker",
-      }])
-    }
 
-    else if(initalChatSequence.current === "email"){
-      setChats(prevChats => [...prevChats, {
-        msg: metadata?.msg_2,
-        timestamp: Date.now(),
-        sender: "worker",
-      }])
-    }
+      
+    } 
+    else if (initalChatSequence.current === "name") {
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
-    else if(initalChatSequence.current === "issue"){
-      setChats(prevChats => [...prevChats, {
-        msg: metadata?.msg_3,
-        timestamp: Date.now(),
-        sender: "worker",
-      }])
+      setChats((prevChats) => [
+        ...prevChats,
+        {
+          msg: metadata?.msg_2,
+          timestamp: Date.now(),
+          sender: "worker",
+        },
+      ]);
     }
-    // message: {
-    //   timestamp: number;
-    //   msg: string;
-    //   sender: "web" | "worker";
-    // }
+    
+    
+    
+    else if (initalChatSequence.current === "email") {
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
+      setChats((prevChats) => [
+        ...prevChats,
+        {
+          msg: metadata?.msg_3,
+          timestamp: Date.now(),
+          sender: "worker",
+        },
+      ]);
+    } else if (initalChatSequence.current === "issue") {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      setChats((prevChats) => [
+        ...prevChats,
+        {
+          msg: metadata?.msg_4,
+          timestamp: Date.now(),
+          sender: "worker",
+        },
+      ]);
+    }
 
   }
 
   useEffect(() => {
-    async function getMetadata(){
+    async function getMetadata() {
       const res = await fetch(`${API_URL}/web/get-metadata`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({websiteId}),
+        body: JSON.stringify({ websiteId }),
       });
       const data = await res.json();
       setMetadata(data);
-    initialChatSequence("", data?.msg_1);
-
+      initialChatSequence("", data?.msg_1);
     }
 
     getMetadata();
   }, []);
 
-
   useEffect(() => {
-
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener("beforeunload", handleBeforeUnload);
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, [chatId, token, socket]);
 
-  async function disconnect(){
+  async function disconnect() {
     if (socket?.connected) {
       console.log("disconnecting");
       console.log(socket);
       console.log(token);
       // Emit a custom disconnect event before closing
-      
+
       await fetch(`${API_URL}/disconnect`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({chatId, userToken: token, party: "web"}),
+        body: JSON.stringify({ chatId, userToken: token, party: "web" }),
       });
-     
-        console.log("disconnected");
-        // Only disconnect after confirmation the event was received
-        socket?.disconnect();
-        setIntialized(false);
-        setChatDisconnected(false);
-        setChats([]);
-        console.log(socket);
-     
+
+      console.log("disconnected");
+      // Only disconnect after confirmation the event was received
+      socket?.disconnect();
+      setIntialized(false);
+      setChatDisconnected(true);
+      // setChats([]);
+      // console.log(socket);
     }
   }
-
 
   useEffect(() => {
     if (socket) {
@@ -375,8 +497,6 @@ const [chatDisconnected, setChatDisconnected] = useState<boolean>(false);
         //   setActiveChat(null);
         // }
       });
-    
-    
     }
   }, [socket]);
 
@@ -385,73 +505,49 @@ const [chatDisconnected, setChatDisconnected] = useState<boolean>(false);
       {/* @ts-ignore */}
       <ExpandableChat size="lg" position="middle">
         <ExpandableChatHeader className="flex-col text-center justify-center">
-          <h1 className="text-xl font-semibold">{metadata?.title || "Chat with us"}</h1>
+          <h1 className="text-xl font-semibold">
+            {metadata?.title || "Chat with us"}
+          </h1>
           <p>{metadata?.description || "Ask any question"}</p>
-          <div className="flex gap-2 items-center pt-2">
-            
-     
-            {/* <Button onClick={async () => {
-              if (socket?.connected) {
-                console.log("disconnecting");
-                console.log(socket);
-                console.log(token);
-                // Emit a custom disconnect event before closing
-                
-                await fetch(`${API_URL}/disconnect`, {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({chatId, userToken: token, party: "web"}),
-                });
-               
-                  console.log("disconnected");
-                  // Only disconnect after confirmation the event was received
-                  socket?.disconnect();
-                  setIntialized(false);
-                  setChatDisconnected(false);
-                  setChats([]);
-                  console.log(socket);
-               
-              }
-            }}>
-              Disconnect
-            </Button> */}
-          </div>
+          <div className="flex gap-2 items-center pt-2"></div>
         </ExpandableChatHeader>
         <ExpandableChatBody>
-
-          
-
-  
-     
-            <ChatMessageList>
-              {chats?.length > 0 &&
-                chats.map(
-                  (message: {
-                    timestamp: number;
-                    msg: string;
-                    sender: "web" | "worker";
-                  }) => (
-                    <ChatBubble
-                      key={message?.timestamp}
-                      variant={message?.sender === "web" ? "received" : "sent"}
-                    >
-                      <ChatBubbleAvatar
-                        fallback={message?.sender === "web" ? "You" : "Agent"}
-                      />
+          <ChatMessageList>
+            {chats?.length > 0 &&
+              chats.map(
+                (message: {
+                  timestamp: number;
+                  msg: string;
+                  sender: "web" | "worker";
+                }) => (
+                  <ChatBubble
+                    key={message?.timestamp}
+                    variant={message?.sender === "web" ? "received" : "sent"}
+                  >
+                    <ChatBubbleAvatar
+                      fallback={message?.sender === "web" ? "You" : "Agent"}
+                    />
+                    <div className="relative group">
                       <ChatBubbleMessage
-                        variant={
-                          message?.sender === "web" ? "received" : "sent"
-                        }
+                        variant={message?.sender === "web" ? "received" : "sent"}
                       >
                         {message?.msg}
+                        {message?.sender === "web" && (
+                          <button 
+                            onClick={() => setEditingMessage(message)}
+                            className="opacity-0 group-hover:opacity-100 absolute -right-6 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                        )}
                       </ChatBubbleMessage>
-                    </ChatBubble>
-                  )
-                )}
-            </ChatMessageList>
-          
+                    </div>
+                  </ChatBubble>
+                )
+              )}
+            {/* Add div ref at the bottom of messages */}
+            <div ref={messagesEndRef} />
+          </ChatMessageList>
         </ExpandableChatBody>
         <ExpandableChatFooter className="flex flex-col gap-[5px] items-start">
           {chatDisconnected && (
@@ -465,27 +561,69 @@ const [chatDisconnected, setChatDisconnected] = useState<boolean>(false);
               <p>{statusMsg}</p>
             </div>
           )}
+          {editingMessage && (
+            <div className="w-full p-2 bg-gray-50 border-t">
+              <p className="text-sm text-gray-500 mb-2">Edit message:</p>
+              <div className="flex gap-2">
+                <Input
+                  value={editingMessage.msg}
+                  onChange={(e) => setEditingMessage(prev => prev ? {...prev, msg: e.target.value} : null)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleEditMessage(editingMessage.timestamp, editingMessage.msg);
+                    }
+                  }}
+                />
+                <Button onClick={() => handleEditMessage(editingMessage.timestamp, editingMessage.msg)}>
+                  Save
+                </Button>
+                <Button variant="outline" onClick={() => setEditingMessage(null)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+
+
           <ChatInput
             value={chatMsg}
             onChange={(e) => {
               setChatMsg(e.target.value);
-              // Timeout will automatically reset due to the useEffect above
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (chatMsg.trim()) {
+                  sendChat();
+                  setChatMsg("");
+                }
+              }
             }}
           />
 
-          <div className="flex gap-2 items-center justify-between w-full" >
-            
-          <Button type="button" size="icon" className="w-1/5" onClick={() => {sendChat(); setChatMsg("");}} disabled={chatDisconnected}>
-            send
-          </Button>
+          <div className="flex gap-2 items-center justify-between w-full">
+            <Button
+              type="button"
+              size="icon"
+              className="w-1/5"
+              onClick={() => {
+                sendChat();
+                setChatMsg("");
+              }}
+              disabled={chatDisconnected || waitingForWorker}
+            >
+              {waitingForWorker ? "Waiting for worker" : "Send"}
+            </Button>
 
-          <Button onClick={async () => {
-              disconnect();
-            }}>
+            <Button
+              onClick={async () => {
+                disconnect();
+              }}
+            >
               End chat
             </Button>
-            </div>
-   
+          </div>
 
 
         </ExpandableChatFooter>

@@ -9,7 +9,7 @@ type SidebarProps = {
 export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
   const tabs = [
     { id: 'chat', label: 'Chat', icon: MessageSquare },
-    { id: 'workers', label: 'Workers', icon: Users },
+    { id: 'workers', label: 'Users', icon: Users },
     { id: 'websites', label: 'Websites', icon: Globe },
   ]
 

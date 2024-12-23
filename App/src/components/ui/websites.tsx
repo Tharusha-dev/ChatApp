@@ -36,6 +36,9 @@ import { useStore } from "@/stores/store";
 import { Worker, Website } from "@/types/types";
 import { EditWebsiteMetadata } from "./editWebsiteMetadata";
 import { CodeDialog } from "./copy-code";
+import { useToast } from "@/hooks/use-toast"
+import { ChatIconDropdown } from "./chatIconDropdown";
+
 
 export default function Websites() {
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -44,17 +47,19 @@ export default function Websites() {
 
   const [selectedWorkers, setSelectedWorkers] = useState<Worker[]>([]);
 
+
   const [newWebsite, setNewWebsite] = useState<any>({
     _id: "",
     domain: "",
+    chat_icon: "https://www.svgrepo.com/show/529481/chat-round-dots.svg ",
     workers: [],
     metadata: {
-      title: "",
-      description: "",
-      msg_1: "",
-      msg_2: "",
-      msg_3: "",
-      msg_4: "",
+      title: "Welcome to Support",
+      description: "Ask us anything",
+      msg_1: `Welcome to support. How do you want to contact us? Whatsapp, Telegram, Live chat.`,
+      msg_2: "What is your name?",
+      msg_3: "What is your email?",
+      msg_4: "How can we help?",
     }
   })
 
@@ -64,21 +69,57 @@ export default function Websites() {
   const websites = useStore((state) => state.websites);
   const addWebsite = useStore((state) => state.addWebsite);
 
-  function handleAddWebsite(){
-    addWebsite({
-      _id: "",
-      domain: newWebsite.domain,
-      chat_icon: newWebsite.chat_icon,
-      workers: [],
-      metadata: {
-        title: newWebsite.metadata.title,
-        description: newWebsite.metadata.description,
-        msg_1: newWebsite.metadata.msg_1,
-        msg_2: newWebsite.metadata.msg_2,
-        msg_3: newWebsite.metadata.msg_3,
-        msg_4: newWebsite.metadata.msg_4,
-      }
-    })
+  const [domainError, setDomainError] = useState<string>("");
+
+  const [isAddingWebsite, setIsAddingWebsite] = useState(false);
+  const [isEditingWorkers, setIsEditingWorkers] = useState(false);
+  const { toast } = useToast();
+
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isRemovingWebsite, setIsRemovingWebsite] = useState(false);
+
+  async function handleAddWebsite(){
+    const domainExists = websites.some(
+      (website) => website.domain.toLowerCase() === newWebsite.domain.toLowerCase()
+    );
+
+    if (domainExists) {
+      setDomainError("A website with this domain already exists");
+      return;
+    }
+
+    setDomainError("");
+    setIsAddingWebsite(true);
+    
+    try {
+      await addWebsite({
+        _id: "",
+        domain: newWebsite.domain,
+        chat_icon: newWebsite.chat_icon,
+        workers: [],
+        metadata: {
+          title: newWebsite.metadata.title,
+          description: newWebsite.metadata.description,
+          msg_1: newWebsite.metadata.msg_1,
+          msg_2: newWebsite.metadata.msg_2,
+          msg_3: newWebsite.metadata.msg_3,
+          msg_4: newWebsite.metadata.msg_4,
+        }
+      });
+      
+      toast({
+        title: "Success",
+        description: "Website added successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add website",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAddingWebsite(false);
+    }
   }
 
 
@@ -88,6 +129,10 @@ export default function Websites() {
 
   const removeWorkerFromWebsite = useStore(
     (state) => state.removeWorkerFromWebsite
+  );
+
+  const removeWebsite = useStore(
+    (state) => state.removeWebsite
   );
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -104,30 +149,69 @@ export default function Websites() {
   async function handleEditConfirm(){
     if(!selectedWebsite?._id) return;
     
-    const addedWorkers = selectedWorkers.filter(
-      worker => !selectedWebsite.workers.some(
-        originalWorker => originalWorker._id === worker._id
-      )
-    );
-  
-    const removedWorkers = selectedWebsite.workers.filter(
-      originalWorker => !selectedWorkers.some(
-        worker => worker._id === originalWorker._id
-      )
-    );
-  
-    console.log("Added workers:", addedWorkers);
-    console.log("Removed workers:", removedWorkers);
+    setIsEditingWorkers(true);
+    
+    try {
+      const addedWorkers = selectedWorkers.filter(
+        worker => !selectedWebsite.workers.some(
+          originalWorker => originalWorker._id === worker._id
+        )
+      );
+    
+      const removedWorkers = selectedWebsite.workers.filter(
+        originalWorker => !selectedWorkers.some(
+          worker => worker._id === originalWorker._id
+        )
+      );
+    
+      console.log("Added workers:", addedWorkers);
+      console.log("Removed workers:", removedWorkers);
 
+      await Promise.all([
+        ...addedWorkers.map(worker => 
+          assignWorkerToWebsite(worker._id, selectedWebsite._id)
+        ),
+        ...removedWorkers.map(worker => 
+          removeWorkerFromWebsite(worker._id, selectedWebsite._id)
+        )
+      ]);
 
-    addedWorkers.forEach((worker) => {
-      assignWorkerToWebsite(worker._id, selectedWebsite._id);
-    })
+      toast({
+        title: "Success",
+        description: "Workers updated successfully",
+      });
+      setDialogOpen(false);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update workers",
+        variant: "destructive",
+      });
+    } finally {
+      setIsEditingWorkers(false);
+    }
+  }
 
-    removedWorkers.forEach((worker) => {
-      removeWorkerFromWebsite(worker._id, selectedWebsite._id);
-    })
-
+  async function handleRemoveWebsite() {
+    if (!selectedWebsite?._id) return;
+    
+    setIsRemovingWebsite(true);
+    try {
+      await removeWebsite(selectedWebsite._id);
+      toast({
+        title: "Success",
+        description: "Website removed successfully",
+      });
+      setDeleteDialogOpen(false);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to remove website",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRemovingWebsite(false);
+    }
   }
 
   const columns: ColumnDef<Website>[] = [
@@ -162,19 +246,26 @@ export default function Websites() {
         const website = row.original;
         return (
           <div className="flex gap-2">
-          <CodeDialog website={website} />
-          <EditWebsiteMetadata website={website} />
-          <Button
-            onClick={() => {
-              console.log(website)
-              console.log(workers)
-              setSelectedWebsite(website);
-              setSelectedWorkers(website.workers);
-              setDialogOpen(true);
-            }}
-          >
-            Edit Workers
-          </Button>
+            <CodeDialog website={website} />
+            <EditWebsiteMetadata website={website} />
+            <Button
+              onClick={() => {
+                setSelectedWebsite(website);
+                setSelectedWorkers(website.workers);
+                setDialogOpen(true);
+              }}
+            >
+              Edit Workers
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setSelectedWebsite(website);
+                setDeleteDialogOpen(true);
+              }}
+            >
+              Remove
+            </Button>
           </div>
         );
       },
@@ -224,12 +315,20 @@ export default function Websites() {
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="domain" className="text-right">Domain</Label>
-                <Input
-                  id="domain"
-                  value={newWebsite.domain}
-                  onChange={(e) => setNewWebsite({ ...newWebsite, domain: e.target.value })}
-                  className="col-span-3"
-                />
+                <div className="col-span-3">
+                  <Input
+                    id="domain"
+                    value={newWebsite.domain}
+                    onChange={(e) => {
+                      setDomainError("");
+                      setNewWebsite({ ...newWebsite, domain: e.target.value });
+                    }}
+                    className={domainError ? "border-red-500" : ""}
+                  />
+                  {domainError && (
+                    <p className="text-sm text-red-500 mt-1">{domainError}</p>
+                  )}
+                </div>
               </div>
         
              
@@ -308,13 +407,7 @@ export default function Websites() {
             <Label htmlFor="chat_icon" className="text-right">
               Chat Icon
             </Label>
-            <Input
-              id="chat_icon"
-              
-              value={newWebsite.chat_icon}
-              className="col-span-3"
-              onChange={(e) => setNewWebsite({ ...newWebsite, chat_icon: e.target.value })}
-            />
+            <ChatIconDropdown onSelect={(url)=>{setNewWebsite({...newWebsite, chat_icon: url})}} /> 
           </div>
             </div>
             <Button onClick={handleAddWebsite}>Add Website</Button>
@@ -323,6 +416,7 @@ export default function Websites() {
 
       </div>
     
+
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -422,6 +516,33 @@ export default function Websites() {
         </DialogFooter>
         </DialogContent>
     
+      </Dialog>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove Website</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p>Are you sure you want to remove {selectedWebsite?.domain}?</p>
+            <p className="text-sm text-muted-foreground">This action cannot be undone.</p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleRemoveWebsite}
+              disabled={isRemovingWebsite}
+            >
+              {isRemovingWebsite ? "Removing..." : "Remove Website"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
     </div>
   );

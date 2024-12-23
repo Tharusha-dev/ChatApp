@@ -16,7 +16,7 @@ export function CodeDialog({website}: {website: Website}) {
   const [copied, setCopied] = useState(false)
 
   const copyToClipboard = async () => {
-    const code = `<script src="https://chat.chatzu.ai/loader.js website-id=${website._id} icon-url=${website.chat_icon}"></script>`
+    const code = `<script src="https://chat.chatzu.ai/loader.js" website-id="${website._id}" icon-url="${website.chat_icon}"></script>`
     await navigator.clipboard.writeText(code)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
@@ -49,7 +49,7 @@ export function CodeDialog({website}: {website: Website}) {
         <div className="mt-4">
           <pre className="rounded-lg bg-muted p-4 overflow-x-auto whitespace-pre-wrap break-all">
             <code className="text-sm">
-              {`<script src="https://chat.chatzu.ai/loader.js website-id=${website._id} icon-url=${website.chat_icon}"></script>`}
+              {`<script src="https://chat.chatzu.ai/loader.js" website-id="${website._id}" icon-url="${website.chat_icon}"></script>`}
             </code>
           </pre>
         </div>

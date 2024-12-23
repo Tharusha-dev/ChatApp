@@ -8,16 +8,16 @@ interface StoreState {
 
   // Actions
   initializeStore: (initialWorkers: Worker[], initialWebsites: Website[]) => void;
-  addWorker: (worker: Worker) => void;
-  updateWorker: (workerId: string, field: keyof Worker, value: any) => void;
-  removeWorker: (_id: string) => void;
+  addWorker: (worker: Worker) => Promise<void>;
+  updateWorker: (workerId: string, field: keyof Worker, value: any) => Promise<void>;
+  removeWorker: (_id: string) => Promise<void>;
 
-  addWebsite: (website: Website) => void;
-  updateWebsite: (websiteId: string, field: keyof Website, value: any) => void;
-  removeWebsite: (_id: string) => void;
+  addWebsite: (website: Website) => Promise<void>;
+  updateWebsite: (websiteId: string, field: keyof Website, value: any) => Promise<void>;
+  removeWebsite: (_id: string) => Promise<void>;
 
-  assignWorkerToWebsite: (workerId: string, websiteId: string) => void;
-  removeWorkerFromWebsite: (workerId: string, websiteId: string) => void;
+  assignWorkerToWebsite: (workerId: string, websiteId: string) => Promise<void>;
+  removeWorkerFromWebsite: (workerId: string, websiteId: string) => Promise<void>;
 }
 
 export const useStore = create<StoreState>((set, get) => ({
@@ -57,14 +57,29 @@ export const useStore = create<StoreState>((set, get) => ({
 
 
   // Remove a worker
-  removeWorker: (_id) =>
+  removeWorker: async (_id) => {
+    try {
+      const response = await fetch(`${API_URL}/admin/worker/remove`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ workerId: _id }),
+      });
+      const data = await response.json();
+      console.log("Worker removed:", data);
+    } catch (error) {
+      console.error("Error removing worker:", error);
+    }
+
     set((state) => ({
       workers: state.workers.filter((w) => w._id !== _id),
       websites: state.websites.map((website) => ({
         ...website,
         workers: website.workers.filter((w) => w._id !== _id),
       })),
-    })),
+    }));
+  },
 
   // Add a website
   addWebsite: async (website) => {
@@ -76,7 +91,7 @@ export const useStore = create<StoreState>((set, get) => ({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ domain: website.domain, metadata: website.metadata }),
+        body: JSON.stringify({ domain: website.domain, metadata: website.metadata, chat_icon: website.chat_icon }),
       });
       const data = await response.json();
       console.log("Website added:", data);
@@ -143,10 +158,26 @@ export const useStore = create<StoreState>((set, get) => ({
 
 
   // Remove a website
-  removeWebsite: (_id) =>
+  removeWebsite: async (_id) => {
+
+    try{
+      const response = await fetch(`${API_URL}/admin/websites/delete`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({websiteId: _id}),
+      });
+      const data = await response.json();
+      console.log("Website removed:", data);
+    } catch (error) {
+      console.error("Error removing website:", error);
+    }
+    
     set((state) => ({
       websites: state.websites.filter((w) => w._id !== _id),
-    })),
+    }));
+  },
 
   // Assign a worker to a website
   assignWorkerToWebsite: async (workerId, websiteId) => {

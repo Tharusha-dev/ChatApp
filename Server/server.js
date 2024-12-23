@@ -35,6 +35,12 @@ const io = new Server(server, {
   },
 });
 
+
+const asyncHandler = (fn) => (req, res, next) => {
+  Promise.resolve(fn(req, res, next)).catch(next);
+};
+
+
 app.use((req, res, next) => {
   if (req.path === "/disconnect") {
     const origin = req.headers.origin;
@@ -53,30 +59,40 @@ app.post("/test", (req, res) => {
 });
 
 //worker login
-app.post("/worker/login", async (req, res) => {
+app.post("/worker/login", asyncHandler(async (req, res) => {
   logger("Route: /worker/login - Incoming data: " + JSON.stringify(req.body));
-  //TODO : check if id in in admin list in db
+  
   const { email, password } = req.body;
+  if (!email || !password) {
+    throw { status: 400, message: 'Email and password are required' };
+  }
 
-  const worker = await workersCollection.findOne({ email });
+  
+  const worker = await workersCollection.findOne({ email }).catch(err => {
+    logger(`Database error while finding worker: ${err.message}`);
+    throw { status: 500, message: 'Database error occurred' };
+  });
 
-  if (!worker) return res.status(401).json({ message: "Invalid credentials" });
+  if (!worker) {
+    throw { status: 401, message: "Invalid credentials" };
+  }
 
-  const isPasswordValid = await bcrypt.compare(password, worker.password);
+  const isPasswordValid = await bcrypt.compare(password, worker.password).catch(err => {
+    logger(`Password comparison error: ${err.message}`);
+    throw { status: 500, message: 'Error validating credentials' };
+  });
 
-  if (!isPasswordValid)
-    return res.status(401).json({ message: "Invalid credentials" });
+  if (!isPasswordValid) {
+    throw { status: 401, message: "Invalid credentials" };
+  }
 
   const token = jwt.sign({ id: worker._id, type: "worker" }, tokenSecret);
-
-  logger(token);
-  // console.log(token);
-  logger("Route: /worker/login - Outgoing data: " + JSON.stringify({ token }));
+  logger(`Login successful for worker: ${email}`);
   res.json({ token });
-});
+}));
 
 //worker signup
-app.post("/worker/signup", async (req, res) => {
+app.post("/worker/signup", asyncHandler(async (req, res) => {
   logger("Route: /worker/signup - Incoming data: " + JSON.stringify(req.body));
   logger("signup");
 
@@ -97,15 +113,36 @@ app.post("/worker/signup", async (req, res) => {
 
     if (err) throw err;
   });
-});
+}));
 
 //get current buffer
-app.get("/worker/current-buffer", async (req, res) => {
-  const buffer = await bufferCollection.find().toArray();
-  res.json(buffer);
-});
+app.get("/worker/current-buffer", asyncHandler(async (req, res) => {
 
-app.post("/web/join", async (req, res) => {
+  const workerToken = req.headers.auth;
+  let decodedToken;
+
+  try {
+    decodedToken = jwt.verify(workerToken, tokenSecret);
+  } catch (error) {
+    console.log(error);
+    return res.status(401).json({ message: "Invalid token" });
+  }
+
+  const worker = await workersCollection.findOne({ _id: new ObjectId(decodedToken.id) }).catch(err => {
+    logger(`Database error while finding worker: ${err.message}`);
+    throw { status: 500, message: 'Database error occurred' };
+  });
+
+  const workerWebsites = worker?.websites;
+
+  const buffer = await bufferCollection.find({ websiteId: { $in: workerWebsites } }).toArray().catch(err => {
+    logger(`Database error while finding buffer: ${err.message}`);
+    throw { status: 500, message: 'Database error occurred' };
+  });
+  res.json(buffer);
+}));
+
+app.post("/web/join", asyncHandler(async (req, res) => {
   logger("Route: /web/join - Incoming data: " + JSON.stringify(req.body));
   const { userToken, initialMessage, name, email, websiteId, currentUrl } = req.body;
   const ip =
@@ -147,6 +184,9 @@ app.post("/web/join", async (req, res) => {
       time: 0,
       party: "",
     },
+  }).catch(err => {
+    logger(`Database error while inserting chat: ${err.message}`);
+    throw { status: 500, message: 'Database error occurred' };
   });
 
   //add buffer to db
@@ -164,10 +204,10 @@ app.post("/web/join", async (req, res) => {
     userToken: token,
     chatId: chatResult.insertedId,
   });
-});
+}));
 
 
-app.post("/web/check-availability", async (req, res) => {
+app.post("/web/check-availability", asyncHandler(async (req, res) => {
 
   const { websiteId } = req.body;
 
@@ -181,17 +221,20 @@ app.post("/web/check-availability", async (req, res) => {
   
   logger("Route: /check-availability - Outgoing data: " + JSON.stringify({ available: isWorkerAvailable }));
   res.json({ available: isWorkerAvailable });
-});
+}));
 
 
-app.post("/web/get-metadata", async (req, res) => {
+app.post("/web/get-metadata", asyncHandler(async (req, res) => {
   logger("Route: /web/get-metadata - Incoming data: " + JSON.stringify(req.body));
   const { websiteId } = req.body;
-  const website = await websitesCollection.findOne({ _id: new ObjectId(websiteId) });
+  const website = await websitesCollection.findOne({ _id: new ObjectId(websiteId) }).catch(err => {
+    logger(`Database error while finding website: ${err.message}`);
+    throw { status: 500, message: 'Database error occurred' };
+  });
   res.json(website?.metadata);
-});
+  }));
 
-app.post("/worker/chat-msg", async (req, res) => {
+app.post("/worker/chat-msg", asyncHandler(async (req, res) => {
   logger(
     "Route: /worker/chat-msg - Incoming data: " + JSON.stringify(req.body)
   );
@@ -200,7 +243,13 @@ app.post("/worker/chat-msg", async (req, res) => {
 
   console.log(req.body);
 
-  const decodedToken = jwt.verify(req.body.workerToken, tokenSecret);
+  let decodedToken;
+  try {
+    decodedToken = jwt.verify(req.body.workerToken, tokenSecret);
+  } catch (error) {
+    console.log(error);
+    return res.status(401).json({ message: "Invalid token" });
+  }
   console.log(decodedToken);
   let result = await addMsgToChat(
     req.body.chatId,
@@ -242,17 +291,23 @@ app.post("/worker/chat-msg", async (req, res) => {
   res.json({ message: "chat msg sent" });
 
   //..req.body, chatId: result?.insertedId, sender: decodedToken?.type
-});
+}));
 
 
-app.post("/chat-msg", async (req, res) => {
+app.post("/chat-msg", asyncHandler(async (req, res) => {
   logger("Route: /chat-msg - Incoming data: " + JSON.stringify(req.body));
   // data : {userToken : "token", msg : "msg"}
   logger("chat msg received **********");
 
   console.log(req.body);
 
-  const decodedToken = jwt.verify(req.body.userToken, tokenSecret);
+  let decodedToken;
+  try {
+    decodedToken = jwt.verify(req.body.userToken, tokenSecret);
+  } catch (error) {
+    console.log(error);
+    return res.status(401).json({ message: "Invalid token" });
+  }
   console.log(decodedToken);
   let result = await addMsgToChat(
     req.body.chatId,
@@ -293,21 +348,27 @@ app.post("/chat-msg", async (req, res) => {
   res.json({ message: "chat msg sent" });
 
   //..req.body, chatId: result?.insertedId, sender: decodedToken?.type
-});
+}));
 
-app.post("/disconnect", async (req, res) => {
+app.post("/disconnect", asyncHandler(async (req, res) => {
   console.log("/disconnect");
   // Parse the raw body if it's a Buffer
   const body = req.body instanceof Buffer ? JSON.parse(req.body) : req.body;
   const { userToken, chatId, party } = body;
   console.log(body);
-  const chat = await chatsCollection.findOne({ _id: new ObjectId(chatId) });
+  const chat = await chatsCollection.findOne({ _id: new ObjectId(chatId) }).catch(err => {
+    logger(`Database error while finding chat: ${err.message}`);
+    throw { status: 500, message: 'Database error occurred' };
+  });
   if (chat?.disconnect?.time > 0)
     return res.json({ message: "chat already disconnected" });
   await chatsCollection.updateOne(
     { _id: new ObjectId(chatId) },
     { $set: { disconnect: { time: Date.now(), party } } }
-  );
+  ).catch(err => {
+    logger(`Database error while updating chat: ${err.message}`);
+    throw { status: 500, message: 'Database error occurred' };
+  });
 
   if (party === "web") {
     console.log("emiting web disconnected");
@@ -326,32 +387,47 @@ app.post("/disconnect", async (req, res) => {
   // io.to(userToken).emit("party-disconnected",{chatId: chatId, party: "web"} );
   console.log("disconnect");
   res.json({ message: "disconnect" });
-});
+}));
 
-app.post("/worker/get-chat", async (req, res) => {
+app.post("/worker/get-chat", asyncHandler(async (req, res) => {
   logger(
     "Route: /worker/get-chat - Incoming data: " + JSON.stringify(req.body)
   );
 
   if (!req.headers.auth)
     return res.status(401).json({ message: "Invalid token" });
-  const decodedToken = jwt.verify(req.headers.auth, tokenSecret);
+  let decodedToken;
+  try {
+    decodedToken = jwt.verify(req.headers.auth, tokenSecret);
+  } catch (error) {
+    console.log(error);
+    return res.status(401).json({ message: "Invalid token" });
+  }
   logger(decodedToken);
 
   if (decodedToken?.type !== "worker")
     return res.status(401).json({ message: "Invalid token" });
 
   const { chatId } = req.body;
-  const chat = await chatsCollection.findOne({ _id: new ObjectId(chatId) });
+  const chat = await chatsCollection.findOne({ _id: new ObjectId(chatId) }).catch(err => {
+    logger(`Database error while finding chat: ${err.message}`);
+    throw { status: 500, message: 'Database error occurred' };
+  });
   // logger("Route: /worker/get-chat - Outgoing data: " + JSON.stringify(chat));
   res.json(chat);
-});
+}));
 
-app.get("/worker/get-chats", async (req, res) => {
+app.get("/worker/get-chats", asyncHandler(async (req, res) => {
   logger("Route: /worker/get-chats - Incoming data: " + JSON.stringify(req.body));
   if (!req.headers.auth)
     return res.status(401).json({ message: "Invalid token" });
-  const decodedToken = jwt.verify(req.headers.auth, tokenSecret);
+  let decodedToken;
+  try {
+    decodedToken = jwt.verify(req.headers.auth, tokenSecret);
+  } catch (error) {
+    console.log(error);
+    return res.status(401).json({ message: "Invalid token" });
+  }
   logger(decodedToken);
 
   if (decodedToken?.type !== "worker")
@@ -362,10 +438,13 @@ app.get("/worker/get-chats", async (req, res) => {
   });
 
   // Convert string IDs to ObjectIds
-  const chatObjectIds = worker.chats.map((chatId) => new ObjectId(chatId));
+  const chatObjectIds = worker?.chats?.map((chatId) => new ObjectId(chatId));
   const chats = await chatsCollection
     .find({ _id: { $in: chatObjectIds } })
-    .toArray();
+    .toArray().catch(err => {
+      logger(`Database error while finding chats: ${err.message}`);
+      throw { status: 500, message: 'Database error occurred' };
+    });
 
   // Get unique websiteIds from all chats
   const uniqueWebsiteIds = [...new Set(chats.map(chat => chat.websiteId.toString()))];
@@ -374,7 +453,10 @@ app.get("/worker/get-chats", async (req, res) => {
   const websites = await websitesCollection
     .find({ _id: { $in: uniqueWebsiteIds.map(id => new ObjectId(id)) } })
     .project({ domain: 1 })
-    .toArray();
+    .toArray().catch(err => {
+      logger(`Database error while finding chats: ${err.message}`);
+      throw { status: 500, message: 'Database error occurred' };
+    });
 
   // Create a map for quick website domain lookup
   const websiteDomainMap = Object.fromEntries(
@@ -388,9 +470,9 @@ app.get("/worker/get-chats", async (req, res) => {
   }));
 
   res.json(chatsWithDomain);
-});
+}));
 
-app.get("/worker/get-buffer", async (req, res) => {
+app.get("/worker/get-buffer", asyncHandler(async (req, res) => {
   logger(
     "Route: /worker/get-buffer - Incoming data: " + JSON.stringify(req.body)
   );
@@ -399,22 +481,34 @@ app.get("/worker/get-buffer", async (req, res) => {
     return res.status(401).json({ message: "Invalid token" });
 
   //get auth header jwt
-  const decodedToken = jwt.verify(req.headers.Auth, tokenSecret);
+  let decodedToken;
+  try {
+    decodedToken = jwt.verify(req.headers.auth, tokenSecret);
+  } catch (error) {
+    console.log(error);
+    return res.status(401).json({ message: "Invalid token" });
+  }
   logger(decodedToken);
   if (decodedToken?.type !== "worker")
     return res.status(401).json({ message: "Invalid token" });
 
-  const buffer = await bufferCollection.find().toArray();
+  const buffer = await bufferCollection.find().toArray().catch(err => {
+    logger(`Database error while finding buffer: ${err.message}`);
+    throw { status: 500, message: 'Database error occurred' };
+  });
   logger(
     "Route: /worker/get-buffer - Outgoing data: " + JSON.stringify(buffer)
   );
   res.json(buffer);
-});
+}));
 
 
-app.get("/admin/get-workers", async (req, res) => {
+app.get("/admin/get-workers", asyncHandler(async (req, res) => {
   try {
-    const workers = await workersCollection.find().toArray();
+    const workers = await workersCollection.find().toArray().catch(err => {
+      logger(`Database error while finding workers: ${err.message}`);
+      throw { status: 500, message: 'Database error occurred' };
+    });
     
     // Map through workers and populate website details
     const workersWithWebsites = await Promise.all(workers.map(async (worker) => {
@@ -422,7 +516,10 @@ app.get("/admin/get-workers", async (req, res) => {
       const websiteDetails = await websitesCollection
         .find({ _id: { $in: worker.websites.map(id => new ObjectId(id)) } })
         .project({ domain: 1, _id: 1 }) // Only get necessary fields
-        .toArray();
+        .toArray().catch(err => {
+          logger(`Database error while finding workers: ${err.message}`);
+          throw { status: 500, message: 'Database error occurred' };
+        });
       
       return {
         _id: worker._id,
@@ -439,17 +536,24 @@ app.get("/admin/get-workers", async (req, res) => {
     logger("Error in /admin/get-workers: " + error.message);
     res.status(500).json({ error: "Internal server error" });
   }
-});
-app.get("/admin/get-websites", async (req, res) => {
+}));
+
+app.get("/admin/get-websites", asyncHandler(async (req, res) => {
   try {
-    const websites = await websitesCollection.find().toArray();
+    const websites = await websitesCollection.find().toArray().catch(err => {
+      logger(`Database error while finding websites: ${err.message}`);
+      throw { status: 500, message: 'Database error occurred' };
+    });
     
     // Map through websites and populate worker details
     const websitesWithWorkers = await Promise.all(websites.map(async (website) => {
       const workerDetails = await workersCollection
         .find({ _id: { $in: website.workers } })
         .project({ name: 1, email: 1, _id :1 }) // Only get necessary fields
-        .toArray();
+        .toArray().catch(err => {
+          logger(`Database error while finding workers: ${err.message}`);
+          throw { status: 500, message: 'Database error occurred' };
+        });
       
       return {
         ...website,
@@ -468,54 +572,142 @@ app.get("/admin/get-websites", async (req, res) => {
     logger("Error in /admin/get-websites: " + error.message);
     res.status(500).json({ error: "Internal server error" });
   }
-});
+}));
 
 
-app.post("/admin/worker/edit", async (req, res) => {
+app.post("/admin/worker/edit", asyncHandler(async (req, res) => {
   logger("Route: /admin/worker/edit - Incoming data: " + JSON.stringify(req.body));
   const { workerId, field, value } = req.body;
   if(field === "password") {
    return res.status(401).json({ message: "Invalid field" });
   }
-  const result = await workersCollection.updateOne({ _id: new ObjectId(workerId) }, { $set: { [field]: value } });
+  const result = await workersCollection.updateOne({ _id: new ObjectId(workerId) }, { $set: { [field]: value } }).catch(err => {
+    logger(`Database error while updating worker: ${err.message}`);
+    throw { status: 500, message: 'Database error occurred' };
+  });
   logger("Route: /admin/worker/edit - Outgoing data: " + JSON.stringify(result));
   res.json(result);
-});
+}));
 
 
-app.post("/admin/websites/edit", async (req, res) => {
+app.post("/admin/worker/delete", asyncHandler(async (req, res) => {
+  logger("Route: /admin/worker/delete - Incoming data: " + JSON.stringify(req.body));
+  const { workerId } = req.body;
+  
+  try {
+    // First, get the worker to find their associated websites
+    const worker = await workersCollection.findOne({ _id: new ObjectId(workerId) }).catch(err => {
+      logger(`Database error while finding worker: ${err.message}`);
+      throw { status: 500, message: 'Database error occurred' };
+    });
+    
+    if (worker?.websites?.length > 0) {
+      // Remove the worker ID from all associated websites
+      await websitesCollection.updateMany(
+        { _id: { $in: worker.websites } },
+        { $pull: { workers: new ObjectId(workerId) } }
+      ).catch(err => {
+        logger(`Database error while updating websites: ${err.message}`);
+        throw { status: 500, message: 'Database error occurred' };
+      });
+    }
+    
+    // Then delete the worker
+    const result = await workersCollection.deleteOne({ _id: new ObjectId(workerId) }).catch(err => {
+      logger(`Database error while deleting worker: ${err.message}`);
+      throw { status: 500, message: 'Database error occurred' };
+    });
+    
+    logger("Route: /admin/worker/delete - Outgoing data: " + JSON.stringify(result));
+    res.json(result);
+  } catch (error) {
+    logger("Error in /admin/worker/delete: " + error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}));
+
+app.post("/admin/websites/edit", asyncHandler(async (req, res) => {
   logger("Route: /admin/websites/edit - Incoming data: " + JSON.stringify(req.body));
   const { websiteId, field, value } = req.body;
-  const result = await websitesCollection.updateOne({ _id: new ObjectId(websiteId) }, { $set: { [field]: value } });
+  const result = await websitesCollection.updateOne({ _id: new ObjectId(websiteId) }, { $set: { [field]: value } }).catch(err => {
+    logger(`Database error while updating website: ${err.message}`);
+    throw { status: 500, message: 'Database error occurred' };
+  });
   logger("Route: /admin/websites/edit - Outgoing data: " + JSON.stringify(result));
   res.json(result);
-});
+}));
 
-app.post("/admin/websites/add", async (req, res) => {
+app.post("/admin/websites/add", asyncHandler(async (req, res) => {
   logger("Route: /admin/websites/add - Incoming data: " + JSON.stringify(req.body));
-  const { domain, metadata } = req.body;
-  const result = await websitesCollection.insertOne({ domain, workers : [], metadata });
+  const { domain, metadata, chat_icon } = req.body;
+  const result = await websitesCollection.insertOne({ domain, workers : [], metadata, chat_icon }).catch(err => {
+    logger(`Database error while adding website: ${err.message}`);
+    throw { status: 500, message: 'Database error occurred' };
+  });
   logger("Route: /admin/websites/add - Outgoing data: " + JSON.stringify(result.insertedId));
   res.json(result.insertedId);
-});
+}));
 
-app.post("/admin/websites/add-worker", async (req, res) => {
+app.post("/admin/websites/add-worker", asyncHandler(async (req, res) => {
   logger("Route: /admin/websites/add-worker - Incoming data: " + JSON.stringify(req.body));
   const { websiteId, workerId } = req.body;
-  const result = await addWorkerToWebsite(workerId, websiteId);
+  const result = await addWorkerToWebsite(workerId, websiteId).catch(err => {
+    logger(`Database error while adding worker to website: ${err.message}`);
+    throw { status: 500, message: 'Database error occurred' };
+  });
   logger("Route: /admin/websites/add-worker - Outgoing data: " + JSON.stringify(result));
   res.json(result);
-});
+}));
 
-app.post("/admin/websites/remove-worker", async (req, res) => {
+app.post("/admin/websites/remove-worker", asyncHandler(async (req, res) => {
   logger("Route: /admin/websites/remove-worker - Incoming data: " + JSON.stringify(req.body));
   const { websiteId, workerId } = req.body;
-  const result = await removeWorkerFromWebsite(workerId, websiteId);
+  const result = await removeWorkerFromWebsite(workerId, websiteId).catch(err => {
+    logger(`Database error while removing worker from website: ${err.message}`);
+    throw { status: 500, message: 'Database error occurred' };
+  });
   logger("Route: /admin/websites/remove-worker - Outgoing data: " + JSON.stringify(result));
   res.json(result);
-});
+}));
 
 
+// ... existing code ...
+
+app.post("/admin/websites/delete", asyncHandler(async (req, res) => {
+  logger("Route: /admin/websites/delete - Incoming data: " + JSON.stringify(req.body));
+  const { websiteId } = req.body;
+  
+  try {
+    // First, get the website to find its associated workers
+    const website = await websitesCollection.findOne({ _id: new ObjectId(websiteId) }).catch(err => {
+      logger(`Database error while finding website: ${err.message}`);
+      throw { status: 500, message: 'Database error occurred' };
+    });
+    
+    if (website?.workers?.length > 0) {
+      // Remove the website ID from all associated workers
+      await workersCollection.updateMany(
+        { _id: { $in: website.workers } },
+        { $pull: { websites: new ObjectId(websiteId) } }
+      ).catch(err => {
+        logger(`Database error while updating workers: ${err.message}`);
+        throw { status: 500, message: 'Database error occurred' };
+      });
+    }
+    
+    // Then delete the website
+    const result = await websitesCollection.deleteOne({ _id: new ObjectId(websiteId) }).catch(err => {
+      logger(`Database error while deleting website: ${err.message}`);
+      throw { status: 500, message: 'Database error occurred' };
+    });
+    
+    logger("Route: /admin/websites/delete - Outgoing data: " + JSON.stringify(result));
+    res.json(result);
+  } catch (error) {
+    logger("Error in /admin/websites/delete: " + error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}));
 
 
 
@@ -544,7 +736,13 @@ io.use((socket, next) => {
       "Socket: admin-connect-request - Incoming data: " +
         JSON.stringify(socket.handshake.query)
     );
-    let decodedToken = jwt.verify(socket.handshake.query.token, tokenSecret);
+    let decodedToken;
+    try {
+      decodedToken = jwt.verify(socket.handshake.query.token, tokenSecret);
+    } catch (error) {
+      console.log(error);
+      return;
+    }
     if (decodedToken.type === "admin") {
       // console.log(decodedToken);
 
@@ -564,65 +762,84 @@ io.use((socket, next) => {
     socket.handshake.query.chatId &&
     socket.handshake.query.websiteId
   ) {
-    logger(
-      "Socket: web-chat-request - Incoming data: " +
-        JSON.stringify(socket.handshake.query)
-    );
-    logger("web chat request");
+    logger("Socket: web-chat-request - Incoming data: " + JSON.stringify(socket.handshake.query));
+    
+    try {
+      // Check if chat exists in either collection
+      const existingChat = await chatsCollection.findOne({ 
+        _id: new ObjectId(socket.handshake.query.chatId) 
+      });
+      
+      const existingBuffer = await bufferCollection.findOne({ 
+        chatId: socket.handshake.query.chatId 
+      });
 
-    // Parse the initialMessage since it comes as a string from query params
-    const initialMessage = JSON.parse(socket.handshake.query.intialMessage);
+      if (existingBuffer) {
+        logger("Chat already exists in system");
+        socket.emit("error", { 
+          message: "Chat already exists",
+          code: "CHAT_EXISTS"
+        });
+        return;
+      }
 
-    const decodedToken = jwt.verify(
-      socket.handshake.query.userToken,
-      tokenSecret
-    );
+      // Continue with existing logic if chat doesn't exist
+      const initialMessage = JSON.parse(socket.handshake.query.intialMessage);
+      
+      const chat = await chatsCollection.findOne({ _id: new ObjectId(socket.handshake.query.chatId) }).catch(err => {
+        logger(`Database error while finding chat: ${err.message}`);
+        throw { status: 500, message: 'Database error occurred' };
+      });
 
-    // const chatResult = await chatsCollection.insertOne({
-    //   userToken: socket.handshake.query.userToken,
-    //   chat: [{...initialMessage, sender: decodedToken?.type}],
+      const bufferResult = await addBufferToDb({
+        userToken: socket.handshake.query.userToken,
+        initialMessage: initialMessage,
+        chatId: socket.handshake.query.chatId,
+        webName: socket.handshake.query.name,
+        websiteId: socket.handshake.query.websiteId,
+        webEmail: chat?.webEmail,
+        metadata: chat?.metadata,
+      });
 
-    // });
+      //TODO : VALIDATE
+      socket.join("web");
+      socket.join(socket.handshake.query.userToken);
+      socket.join(socket.handshake.query.websiteId);
 
-    const bufferResult = await addBufferToDb({
-      userToken: socket.handshake.query.userToken,
-      intialMessage: initialMessage,
-      chatId: socket.handshake.query.chatId,
-      webName: socket.handshake.query.name,
-      websiteId: socket.handshake.query.websiteId,
-    });
+      console.log("========================");
+      console.log("web joined room", socket.handshake.query.userToken);
+      console.log("========================");
 
-    //TODO : VALIDATE
-    socket.join("web");
-    socket.join(socket.handshake.query.userToken);
-    socket.join(socket.handshake.query.websiteId);
+     
 
-    console.log("========================");
-    console.log("web joined room", socket.handshake.query.userToken);
-    console.log("========================");
+      //add buffer to db
 
-    const chat = await chatsCollection.findOne({ _id: new ObjectId(socket.handshake.query.chatId) });
-
-    //add buffer to db
-
-    logger("sending : buffer-request");
-    io.to(socket.handshake.query.websiteId).emit("buffer-request", {
-      userToken: socket.handshake.query.userToken,
-      initialMessage: initialMessage,
-      chatId: socket.handshake.query.chatId,
-      webName: socket.handshake.query.name,
-      webEmail: chat?.webEmail,
-      metadata: chat?.metadata,
-    });
-    logger(
-      "Socket: web-chat-request - Outgoing buffer-request: " +
-        JSON.stringify({
-          userToken: socket.handshake.query.userToken,
-          initialMessage,
-          chatId: socket.handshake.query.chatId,
-        })
-    );
-    return "done";
+      logger("sending : buffer-request");
+      io.to(socket.handshake.query.websiteId).emit("buffer-request", {
+        userToken: socket.handshake.query.userToken,
+        initialMessage: initialMessage,
+        chatId: socket.handshake.query.chatId,
+        webName: socket.handshake.query.name,
+        webEmail: chat?.webEmail,
+        metadata: chat?.metadata,
+      });
+      logger(
+        "Socket: web-chat-request - Outgoing buffer-request: " +
+          JSON.stringify({
+            userToken: socket.handshake.query.userToken,
+            initialMessage,
+            chatId: socket.handshake.query.chatId,
+          })
+      );
+      return "done";
+    } catch (error) {
+      logger(`Error in web-chat-request: ${error.message}`);
+      socket.emit("error", { 
+        message: "Internal server error",
+        code: "SERVER_ERROR"
+      });
+      return;
+    }
   }
 
   if (
@@ -633,7 +850,13 @@ io.use((socket, next) => {
       "Socket: worker-connect-request - Incoming data: " +
         JSON.stringify(socket.handshake.query)
     );
-    let decodedToken = jwt.verify(socket.handshake.query.token, tokenSecret);
+    let decodedToken;
+    try {
+      decodedToken = jwt.verify(socket.handshake.query.token, tokenSecret);
+    } catch (error) {
+      console.log(error);
+      return;
+    }
 
     console.log("==================")
     console.log(decodedToken);
@@ -643,14 +866,20 @@ io.use((socket, next) => {
       logger("worker connected");
 
       // Get worker's websites from database
-      const worker = await workersCollection.findOne({ _id: new ObjectId(decodedToken.id) });
+      const worker = await workersCollection.findOne({ _id: new ObjectId(decodedToken.id) }).catch(err => {
+        logger(`Database error while finding worker: ${err.message}`);
+        throw { status: 500, message: 'Database error occurred' };
+      });
       
       // Join general rooms
       socket.join("worker");
+
+      // console.log("worker joined room", socket.handshake.query.token);
+      console.log(worker)
       // socket.join("buffer");
       
       // Join room for each website the worker is assigned to
-      if (worker.websites && worker.websites.length > 0) {
+      if (worker?.websites && worker?.websites?.length > 0) {
         worker.websites.forEach(websiteId => {
           socket.join(websiteId.toString());
           socket.to(websiteId.toString()).emit("worker-connected")
@@ -700,11 +929,11 @@ io.use((socket, next) => {
     const partyType =
       socket.handshake.query.type === "web-chat-request" ? "web" : "worker";
     // console.log(socket.handshake.query);
-    const decodedToken = jwt.verify(socket.handshake.query.token, tokenSecret);
+    // const decodedToken = jwt.verify(socket.handshake.query.token, tokenSecret);
 
-    const workerId = decodedToken.id;
+    // const workerId = decodedToken.id;
 
-    console.log("decodedToken", decodedToken);
+    // console.log("decodedToken", decodedToken);
     // console.log("handshake", socket.handshake.query);
 
     // console.log("rooms", rooms);
@@ -730,53 +959,137 @@ console.log("server running on port 8000");
 server.listen(8000);
 
 async function addBufferToDb(data) {
-  const result = await bufferCollection.insertOne(data);
+  const result = await bufferCollection.insertOne(data).catch(err => {
+    logger(`Database error while adding buffer: ${err.message}`);
+    throw { status: 500, message: 'Database error occurred' };
+  });
   console.log(result);
   return result;
 }
 
 async function addWorkerToDb(data) {
-  const result = await workersCollection.insertOne({ ...data, chats: [], websites : [] });
-  return result.insertedId;
+  try {
+    if (!data.email || !data.password) {
+      throw { status: 400, message: 'Missing required worker data' };
+    }
+
+    const existingWorker = await workersCollection.findOne({ email: data.email }).catch(err => {
+      logger(`Database error while finding worker: ${err.message}`);
+      throw { status: 500, message: 'Database error occurred' };
+    }) ;
+    if (existingWorker) {
+      throw { status: 409, message: 'Worker with this email already exists' };
+    }
+
+    const result = await workersCollection.insertOne({ 
+      ...data, 
+      chats: [], 
+      websites: [],
+      createdAt: new Date()
+    }).catch(err => {
+      logger(`Database error while adding worker: ${err.message}`);
+      throw { status: 500, message: 'Database error occurred' };
+    });
+    
+    logger(`New worker added with ID: ${result.insertedId}`);
+    return result.insertedId;
+  } catch (error) {
+    logger(`Error in addWorkerToDb: ${error.message}`);
+    throw error;
+  }
 }
 
 async function addMsgToChat(chatId, msg, type) {
-  const result = await chatsCollection.updateOne(
-    { _id: new ObjectId(chatId) },
-    { $push: { chat: { ...msg, sender: type } } }
-  );
-  console.log(result);
-  return result;
+  try {
+    if (!ObjectId.isValid(chatId)) {
+      throw { status: 400, message: 'Invalid chat ID format' };
+    }
+
+    if (!msg || !type) {
+      throw { status: 400, message: 'Message and type are required' };
+    }
+
+    const result = await chatsCollection.updateOne(
+      { _id: new ObjectId(chatId) },
+      { 
+        $push: { 
+          chat: { 
+            ...msg, 
+            sender: type,
+            timestamp: new Date() 
+          } 
+        } 
+      }
+    ).catch(err => {
+      logger(`Database error while adding message to chat: ${err.message}`);
+      throw { status: 500, message: 'Database error occurred' };
+    });
+
+    if (result.matchedCount === 0) {
+      throw { status: 404, message: 'Chat not found' };
+    }
+
+    logger(`Message added to chat ${chatId}`);
+    return result;
+  } catch (error) {
+    logger(`Error in addMsgToChat: ${error.message}`);
+    throw error;
+  }
 }
 
 async function addChatToWorker(userToken, chatId) {
-  const decodedToken = jwt.verify(userToken, tokenSecret);
-  // Convert string ID to ObjectId
-  const workerId = new ObjectId(decodedToken.id);
+
+
+
+  try {
+    const decodedToken = jwt.verify(userToken, tokenSecret);
+    // Convert string ID to ObjectId
+    const workerId = new ObjectId(decodedToken.id);
 
   const result = await workersCollection.updateOne(
     { _id: workerId },
     { $push: { chats: chatId } }
-  );
+  ).catch(err => {
+    logger(`Database error while adding chat to worker: ${err.message}`);
+    throw { status: 500, message: 'Database error occurred' };
+  });
   console.log(result);
+  } catch (error) {
+    console.log(error);
+  }
 }
 
 async function removeChatFromBuffer(chatId) {
-  const result = await bufferCollection.deleteOne({ chatId: chatId });
+  const result = await bufferCollection.deleteOne({ chatId: chatId }).catch(err => {
+    logger(`Database error while deleting chat from buffer: ${err.message}`);
+    throw { status: 500, message: 'Database error occurred' };
+  });
   console.log(result);
   return result;
 }
 
 async function addWorkerToWebsite(workerId, websiteId) {
-  const resultWebsite = await websitesCollection.updateOne({ _id: new ObjectId(websiteId) }, { $push: { workers: new ObjectId(workerId) } });
-  const resultWorker = await workersCollection.updateOne({ _id: new ObjectId(workerId) }, { $push: { websites: new ObjectId(websiteId) } });
+  const resultWebsite = await websitesCollection.updateOne({ _id: new ObjectId(websiteId) }, { $push: { workers: new ObjectId(workerId) } }).catch(err => {
+    logger(`Database error while adding worker to website: ${err.message}`);
+    throw { status: 500, message: 'Database error occurred' };
+  });
+  const resultWorker = await workersCollection.updateOne({ _id: new ObjectId(workerId) }, { $push: { websites: new ObjectId(websiteId) } }).catch(err => {
+    logger(`Database error while adding website to worker: ${err.message}`);
+    throw { status: 500, message: 'Database error occurred' };
+  });
   console.log(resultWebsite, resultWorker);
   return resultWebsite;
 }
 
 async function removeWorkerFromWebsite(workerId, websiteId) {
-  const resultWebsite = await websitesCollection.updateOne({ _id: new ObjectId(websiteId) }, { $pull: { workers: new ObjectId(workerId) } });
-  const resultWorker = await workersCollection.updateOne({ _id: new ObjectId(workerId) }, { $pull: { websites: new ObjectId(websiteId) } });
+  const resultWebsite = await websitesCollection.updateOne({ _id: new ObjectId(websiteId) }, { $pull: { workers: new ObjectId(workerId) } }).catch(err => {
+    logger(`Database error while removing worker from website: ${err.message}`);
+    throw { status: 500, message: 'Database error occurred' };
+  });
+  const resultWorker = await workersCollection.updateOne({ _id: new ObjectId(workerId) }, { $pull: { websites: new ObjectId(websiteId) } }).catch(err => {
+    logger(`Database error while removing website from worker: ${err.message}`);
+    throw { status: 500, message: 'Database error occurred' };
+  });
   console.log(resultWebsite, resultWorker);
   return resultWebsite;
 }

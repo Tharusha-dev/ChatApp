@@ -105,7 +105,7 @@ const [socket, setSocket] = useState<Socket | null>(null);
   //@ts-ignore
   return (
     <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <Script src="/loader.js" website-id="675fa2bbca277b78caa5a6fc" icon-url="https://www.svgrepo.com/show/529487/chat-round.svg"/>
+     <Script src="https://chat.chatzu.ai/loader.js" website-id="67640dc13b8ae492ddb9b048" icon-url="https://www.svgrepo.com/show/529487/chat-round.svg"/>
       <div>
         
         <button
