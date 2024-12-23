@@ -6,7 +6,7 @@ import jwt from "jsonwebtoken";
 import cors from "cors";
 import { v4 as uuidv4 } from "uuid";
 import bcrypt from "bcrypt";
-const mongoUri = "mongodb://localhost:27017";
+const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017';
 const mongoClient = new MongoClient(mongoUri);
 const db = mongoClient.db("chatapp-admin");
 import geoip from 'geoip-country'
