@@ -33,6 +33,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown } from "lucide-react";
 
+
+
 export default function ChatDashboard({socketIn, workerChatsIn, bufferUsersIn, refreshActiveChat, newChatsIn}: {socketIn: Socket | null, workerChatsIn: any[], bufferUsersIn: any[], refreshActiveChat: boolean, newChatsIn: any[]}) {
   const [bufferUsers, setBufferUsers] = useState<any[]>([]);
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -45,6 +47,7 @@ export default function ChatDashboard({socketIn, workerChatsIn, bufferUsersIn, r
   const workerToken = getCookie("userToken") as string;
 
   const [newChats, setNewChats] = useState<any[]>([]);
+
   // const [refreshActiveChat, setRefreshActiveChat] = useState<boolean>(false);
   // useEffect(() => {
   //   console.log("worker chats:", workerChats);

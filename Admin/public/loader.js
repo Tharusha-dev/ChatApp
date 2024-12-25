@@ -39,7 +39,7 @@
         
         iframe.addEventListener("load", () => widgetStyle.display = "block" );
         
-        const widgetUrl = `http://localhost:3001?websiteId=${websiteId}&currentUrl=${currentPageUrl}`;
+        const widgetUrl = `http://localhost:3001/?websiteId=${websiteId}&currentUrl=${currentPageUrl}`;
         
         iframe.src = widgetUrl;
 

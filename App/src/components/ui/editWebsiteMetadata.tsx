@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { useStore } from "@/stores/store";
 import { useState } from "react";
 import { Website } from "@/types/types";
+import { ChatIconDropdown } from "./chatIconDropdown";
 
 export function EditWebsiteMetadata({ website }: { website: Website }) {
   const [title, setTitle] = useState(website.metadata.title);
@@ -120,14 +121,10 @@ export function EditWebsiteMetadata({ website }: { website: Website }) {
             <Label htmlFor="chat_icon" className="text-right">
               Chat Icon
             </Label>
-            <Input
-              id="chat_icon"
-              
-              value={website.chat_icon}
-              className="col-span-3"
-              onChange={(e) => setChatIcon(e.target.value)}
-            />
+            <ChatIconDropdown onSelect={(url)=>{setChatIcon(url)}} selectedIcon={website.chat_icon} /> 
+        
           </div>
+
         </div>
         <DialogFooter>
           <Button type="submit" onClick={handleSave}>Save changes</Button>

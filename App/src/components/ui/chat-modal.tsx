@@ -18,6 +18,9 @@ import { API_URL } from "@/lib/config";
 import { Input } from "@/components/ui/input";
 
 import { Pencil } from "lucide-react";
+
+
+
 export default function ChatModal({
   chatId,
   newChat,
@@ -34,6 +37,7 @@ export default function ChatModal({
   const [chat, setChat] = useState<any[]>([]);
   const [userToken, setUserToken] = useState<string>("");
   const [chatData, setChatData] = useState<any>({});
+
   const [editingMessage, setEditingMessage] = useState<{
     timestamp: number;
     msg: string;
@@ -54,6 +58,8 @@ export default function ChatModal({
     setUserToken(data?.userToken);
     console.log("chat:", data);
   }
+
+
   useEffect(() => {
     if (refresh) {
       getChat();
@@ -95,7 +101,7 @@ export default function ChatModal({
 
           if (existingMsgIndex !== -1) {
             // Replace existing message
-            const updatedChat = [...prevChat];
+                     const updatedChat = [...prevChat];
             updatedChat[existingMsgIndex] = latestMsg;
             return updatedChat;
           } else {
@@ -185,34 +191,74 @@ export default function ChatModal({
               timestamp: number;
               msg: string;
               sender: "web" | "worker";
-            }) => (
-              <ChatBubble
-                key={message?.timestamp}
-                variant={message?.sender === "web" ? "received" : "sent"}
-              >
-                <ChatBubbleAvatar
-                  fallback={message?.sender === "web" ? "Web" : "You"}
-                />
-                <div className="relative group">
-                  <ChatBubbleMessage
-                    variant={message?.sender === "web" ? "received" : "sent"}
+            }) => {
+              // Check if message is a file
+              const fileRegex = /^\[file\]\[link="(.+?)"\]\[name="(.+?)"\]\[type="(.+?)"\]\[\/file\]$/;
+              const fileMatch = message.msg.match(fileRegex);
+
+              if (fileMatch) {
+                // File message
+                const [_, link, name, type] = fileMatch;
+                return (
+                  <ChatBubble
+                    key={message.timestamp}
+                    variant={message.sender === "web" ? "received" : "sent"}
                   >
-                    {message?.msg}
-                    {message?.sender !== "web" && (
-                      <button
-                        onClick={() => {
-                          setEditingMessage(message);
-                          console.log("editingMessage:", message);
-                        }}
-                        className="opacity-0 group-hover:opacity-100 absolute -left-6 top-1/2 -translate-y-1/2 p-1 hover:bg-black rounded"
+                    <ChatBubbleAvatar
+                      fallback={message.sender === "web" ? "Web" : "You"}
+                    />
+                    <div className="relative group">
+                      <ChatBubbleMessage
+                        variant={message.sender === "web" ? "received" : "sent"}
                       >
-                        <Pencil size={14} />
-                      </button>
-                    )}
-                  </ChatBubbleMessage>
-                </div>
-              </ChatBubble>
-            )
+                        <div 
+                          onClick={() => window.open(link, '_blank')}
+                          className="cursor-pointer hover:bg-gray-100 p-2 rounded-lg flex items-center gap-2"
+                        >
+                          <div className="bg-blue-100 p-2 rounded">
+                            📎
+                          </div>
+                          <div>
+                            <p className="font-medium">{name}</p>
+                            <p className="text-sm text-gray-500">{type}</p>
+                          </div>
+                        </div>
+                      </ChatBubbleMessage>
+                    </div>
+                  </ChatBubble>
+                );
+              }
+
+              // Regular message (existing code)
+              return (
+                <ChatBubble
+                  key={message.timestamp}
+                  variant={message.sender === "web" ? "received" : "sent"}
+                >
+                  <ChatBubbleAvatar
+                    fallback={message.sender === "web" ? "Web" : "You"}
+                  />
+                  <div className="relative group">
+                    <ChatBubbleMessage
+                      variant={message.sender === "web" ? "received" : "sent"}
+                    >
+                      {message?.msg}
+                      {message?.sender !== "web" && (
+                        <button
+                          onClick={() => {
+                            setEditingMessage(message);
+                            console.log("editingMessage:", message);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 absolute -left-6 top-1/2 -translate-y-1/2 p-1 hover:bg-black rounded"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                      )}
+                    </ChatBubbleMessage>
+                  </div>
+                </ChatBubble>
+              );
+            }
           )}
       </ChatMessageList>
 
@@ -260,6 +306,7 @@ export default function ChatModal({
         sendMessage={sendMessage}
         disabled={chatData?.disconnect?.time > 0}
       />
+
     </div>
   );
 }

@@ -16,22 +16,22 @@ import {
 interface SimpleImageSelectorProps {
  
   onSelect: (url: string) => void
+  selectedIcon: string
 }
 
-export function ChatIconDropdown({ onSelect }: SimpleImageSelectorProps) {
+export function ChatIconDropdown({ onSelect,  selectedIcon }: SimpleImageSelectorProps) {
  
     const images = [
         "https://www.svgrepo.com/show/529481/chat-round-dots.svg",
         "https://www.svgrepo.com/show/530377/chat-chat.svg",
         "https://www.svgrepo.com/show/529484/chat-round-unread.svg",
         "https://www.svgrepo.com/show/529475/chat-square.svg",
-       
         "https://www.svgrepo.com/show/526897/chat-round-dots.svg"
       ]
     
  
     return (
-    <Select onValueChange={onSelect} defaultValue={images[0]}>
+    <Select onValueChange={onSelect} defaultValue={selectedIcon}>
       <SelectTrigger className="w-full" style={{height: "80%"}}>
         <SelectValue placeholder="Select an image" />
       </SelectTrigger>

@@ -407,7 +407,7 @@ export default function Websites() {
             <Label htmlFor="chat_icon" className="text-right">
               Chat Icon
             </Label>
-            <ChatIconDropdown onSelect={(url)=>{setNewWebsite({...newWebsite, chat_icon: url})}} /> 
+            <ChatIconDropdown onSelect={(url)=>{setNewWebsite({...newWebsite, chat_icon: url})}} selectedIcon={newWebsite.chat_icon} /> 
           </div>
             </div>
             <Button onClick={handleAddWebsite}>Add Website</Button>

@@ -22,11 +22,20 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Suspense } from "react";
-import { Pencil } from "lucide-react";
+import { CornerDownLeft } from "lucide-react";
+import { Pencil, Paperclip } from "lucide-react";
 
 import { useSearchParams } from "next/navigation";
+import Uppy from '@uppy/core';
+import { Dashboard , DashboardModal} from '@uppy/react';
+import { useUppyEvent } from '@uppy/react';
+
+import '@uppy/core/dist/style.min.css';
+import '@uppy/dashboard/dist/style.min.css';
+import Tus from '@uppy/tus'
 
 export default function Home() {
   return (
@@ -66,6 +75,7 @@ function HomeContent() {
 
   // Add new state for tracking typing timeout
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [uploadModalOpen, setUploadModalOpen] = useState<boolean>(false);
 
   // Add function to handle typing timeout
   const handleTypingTimeout = useCallback(() => {
@@ -90,6 +100,20 @@ function HomeContent() {
       }
     };
   }, [chatMsg, handleTypingTimeout]);
+  const [uppy] = useState(() => new Uppy().use(Tus, { endpoint: 'http://localhost:1080/files' }));
+  
+  //@ts-ignore
+  useUppyEvent(uppy, 'upload-success', (file, response) => {
+    console.log('File uploaded successfully:', file);
+    console.log('Upload response:', response);
+
+    const fileUrl = response.uploadURL;
+    const fileName = file?.name || "file";
+    const fileType = file?.type || "file";
+
+    sendChat(`[file][link="${fileUrl}"][name="${fileName}"][type="${fileType}"][/file]`);
+
+  });
 
   // Add a ref for the message list
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -216,16 +240,10 @@ function HomeContent() {
         },
       ]);
     }
-    // setChats([
-    //   {
-    //     msg: initialMessage,
-    //     timestamp: Date.now(),
-    //     sender: "web",
-    //   },
-    // ]);
+
   }
 
-  function sendChat() {
+  function sendChat(fileUploadString: string = "") {
     if (!socket?.connected) {
       console.log("Socket not connected");
 
@@ -288,7 +306,7 @@ function HomeContent() {
     const payload = {
       userToken: token,
       msg: {
-        msg: chatMsg || "Default message",
+        msg: fileUploadString ? fileUploadString : chatMsg ,
         timestamp: Date.now(),
       },
       chatId,
@@ -512,42 +530,90 @@ function HomeContent() {
           <div className="flex gap-2 items-center pt-2"></div>
         </ExpandableChatHeader>
         <ExpandableChatBody>
+ 
+
+
           <ChatMessageList>
-            {chats?.length > 0 &&
-              chats.map(
-                (message: {
-                  timestamp: number;
-                  msg: string;
-                  sender: "web" | "worker";
-                }) => (
+        {chats?.length > 0 &&
+          chats.map(
+            (message: {
+              timestamp: number;
+              msg: string;
+              sender: "web" | "worker";
+            }) => {
+              // Check if message is a file
+              const fileRegex = /^\[file\]\[link="(.+?)"\]\[name="(.+?)"\]\[type="(.+?)"\]\[\/file\]$/;
+              const fileMatch = message.msg.match(fileRegex);
+
+              if (fileMatch) {
+                // File message
+                const [_, link, name, type] = fileMatch;
+                return (
                   <ChatBubble
-                    key={message?.timestamp}
-                    variant={message?.sender === "web" ? "received" : "sent"}
+                    key={message.timestamp}
+                    variant={message.sender === "web" ? "received" : "sent"}
                   >
                     <ChatBubbleAvatar
-                      fallback={message?.sender === "web" ? "You" : "Agent"}
+                      fallback={message.sender === "web" ? "Web" : "You"}
                     />
                     <div className="relative group">
                       <ChatBubbleMessage
-                        variant={message?.sender === "web" ? "received" : "sent"}
+                        variant={message.sender === "web" ? "received" : "sent"}
                       >
-                        {message?.msg}
-                        {message?.sender === "web" && (
-                          <button 
-                            onClick={() => setEditingMessage(message)}
-                            className="opacity-0 group-hover:opacity-100 absolute -right-6 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded"
-                          >
-                            <Pencil size={14} />
-                          </button>
-                        )}
+                        <div 
+                          onClick={() => window.open(link, '_blank')}
+                          className="cursor-pointer hover:bg-gray-100 p-2 rounded-lg flex items-center gap-2"
+                        >
+                          <div className="bg-blue-100 p-2 rounded">
+                            📎
+                          </div>
+                          <div>
+                            <p className="font-medium">{name}</p>
+                            <p className="text-sm text-gray-500">{type}</p>
+                          </div>
+                        </div>
                       </ChatBubbleMessage>
                     </div>
                   </ChatBubble>
-                )
-              )}
-            {/* Add div ref at the bottom of messages */}
+                );
+              }
+
+              // Regular message (existing code)
+              return (
+                <ChatBubble
+                  key={message.timestamp}
+                  variant={message.sender === "web" ? "received" : "sent"}
+                >
+                  <ChatBubbleAvatar
+                    fallback={message.sender === "web" ? "Web" : "You"}
+                  />
+                  <div className="relative group">
+                    <ChatBubbleMessage
+                      variant={message.sender === "web" ? "received" : "sent"}
+                    >
+                      {message?.msg}
+                      {message?.sender !== "web" && (
+                        <button
+                          onClick={() => {
+                            setEditingMessage(message);
+                            console.log("editingMessage:", message);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 absolute -left-6 top-1/2 -translate-y-1/2 p-1 hover:bg-black rounded"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                      )}
+                    </ChatBubbleMessage>
+                  </div>
+                </ChatBubble>
+              );
+            }
+          )}
             <div ref={messagesEndRef} />
-          </ChatMessageList>
+
+      </ChatMessageList>
+
+          
         </ExpandableChatBody>
         <ExpandableChatFooter className="flex flex-col gap-[5px] items-start">
           {chatDisconnected && (
@@ -601,6 +667,38 @@ function HomeContent() {
               }
             }}
           />
+
+<div className="flex items-center p-3 pt-0">
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="gap-1.5"
+            >
+              <Paperclip className="size-4" />  
+              <span className="sr-only">Attach files</span>
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-full w-full">
+            <Dashboard width={"100%"} height={"300px"} uppy={uppy} />
+          </DialogContent>
+        </Dialog>
+
+{/* <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="gap-1.5"
+              onClick={() => setUploadModalOpen(true)}
+            >
+              <Paperclip className="size-4" />  
+              <span className="sr-only">Attach files</span>
+            </Button>
+            <DashboardModal open={uploadModalOpen} uppy={uppy} /> */}
+
+      </div>
 
           <div className="flex gap-2 items-center justify-between w-full">
             <Button

@@ -6,3 +6,5 @@ Server/package-lock.json
 Widget/node_modules
 Widget/package-lock.json
 Widget/.next
+FileServer/node_modules
+FileServer/package-lock.json
