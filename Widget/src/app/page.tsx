@@ -77,6 +77,8 @@ function HomeContent() {
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [uploadModalOpen, setUploadModalOpen] = useState<boolean>(false);
 
+  const [currentChatMethod,setCurrentChatMethod] = useState<null | "select" |"chat" | "telegram" | "whatsapp">(null);
+  // const [chatId, setChatId] = useState<string | null>(null);
   // Add function to handle typing timeout
   const handleTypingTimeout = useCallback(() => {
     disconnect();
@@ -163,6 +165,21 @@ function HomeContent() {
     );
     setEditingMessage(null);
   };
+
+
+  async function telegramJoin() {
+    const res = await fetch(`${API_URL}/telegram/join`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ websiteId, currentUrl }),
+    });
+
+    const data = await res.json();
+    setChatId(data.chatId);
+    return data;
+  }
 
   async function join(initialMessage: string) {
     console.log("login");
@@ -258,7 +275,8 @@ function HomeContent() {
             sender: "web",
           },
         ]);
-        initalChatSequence.current = "name";
+        setCurrentChatMethod("select");
+        // initalChatSequence.current = "name";
       } else if (initalChatSequence.current === "name") {
         setName(chatMsg);
 
@@ -479,7 +497,26 @@ function HomeContent() {
       // console.log(socket);
     }
   }
-
+  const handleChatMethodSelect = async (method: "chat" | "telegram" | "whatsapp") => {
+    if (method === "chat") {
+      initalChatSequence.current = "name";
+      initialChatSequence("", metadata?.msg_2);
+    } else {
+      if(method === "telegram"){
+      let res = await telegramJoin();
+      console.log(res);
+      }
+      setChats((prevChats) => [
+        ...prevChats,
+        {
+          msg: "We will contact you later",
+          timestamp: Date.now(),
+          sender: "worker",
+        },
+      ]);
+    }
+    setCurrentChatMethod(method);
+  };
   useEffect(() => {
     if (socket) {
       console.log("Socket state changed");
@@ -607,8 +644,34 @@ function HomeContent() {
                   </div>
                 </ChatBubble>
               );
+              
             }
+
+            
           )}
+
+{currentChatMethod === "select" && (
+              <div className="flex flex-col gap-2 p-4">
+                <Button 
+                  onClick={() => handleChatMethodSelect("chat")}
+                  className="w-full"
+                >
+                  Chat Now
+                </Button>
+                <Button 
+                  onClick={() => handleChatMethodSelect("telegram")}
+                  className="w-full"
+                >
+                  Contact via Telegram
+                </Button>
+                <Button 
+                  onClick={() => handleChatMethodSelect("whatsapp")}
+                  className="w-full"
+                >
+                  Contact via WhatsApp
+                </Button>
+              </div>
+            )}
             <div ref={messagesEndRef} />
 
       </ChatMessageList>

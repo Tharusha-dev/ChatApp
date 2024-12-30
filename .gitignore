@@ -8,3 +8,5 @@ Widget/package-lock.json
 Widget/.next
 FileServer/node_modules
 FileServer/package-lock.json
+FileServer/files
+
