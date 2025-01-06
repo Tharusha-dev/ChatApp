@@ -15,6 +15,7 @@ interface InfoDisplayProps {
   websiteDomain: string
   onClick: () => void
   key: string
+  type: string
 }
 
 export default function ChatInfoCard({
@@ -24,8 +25,10 @@ export default function ChatInfoCard({
   metadata,
   isDisconnected = false,
   websiteDomain,
-  onClick
+  onClick,
+  type
 }: InfoDisplayProps) {
+  console.log("type:", type);
   return (
     <Card className="w-[400px] mx-auto mb-5 relative" onClick={onClick} key={key}>
 
@@ -73,6 +76,15 @@ export default function ChatInfoCard({
           <div className="flex items-center gap-2 break-all">
             <MapPin className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
             <span className="text-xs">{metadata.currentUrl}</span>
+          </div>
+          <div className={`flex items-center gap-2 break-all ${
+            type === "whatsapp" 
+              ? "bg-[#25D366]" 
+              : type === "telegram" 
+                ? "bg-[#229ED9]" 
+                : "bg-gray-500"
+          } text-white px-2 py-1 rounded-md`}>
+            <span className="text-xs">{type || "web"}</span>
           </div>
         </div>
       </CardContent>

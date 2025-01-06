@@ -9,7 +9,7 @@ const uploadApp = express();
 
 const server = new Server({
   path: '/files',
-  datastore: new FileStore({ directory: '/files' }),
+  datastore: new FileStore({ directory: 'files' }),
 });
 
 // Middleware to log all incoming requests

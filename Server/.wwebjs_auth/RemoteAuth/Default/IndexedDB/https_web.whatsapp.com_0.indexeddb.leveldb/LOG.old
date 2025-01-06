@@ -1,0 +1,13 @@
+2025/01/06-13:00:24.799 8aa3 Reusing MANIFEST /home/tharusha/UpWork/SamJ/ChatApp/Server/.wwebjs_auth/RemoteAuth/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/01/06-13:00:24.799 8aa3 Recovering log #116
+2025/01/06-13:00:24.824 8aa3 Reusing old log /home/tharusha/UpWork/SamJ/ChatApp/Server/.wwebjs_auth/RemoteAuth/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000116.log 
+2025/01/06-13:00:25.723 8aa3 Level-0 table #121: started
+2025/01/06-13:00:25.760 8aa3 Level-0 table #121: 315614 bytes OK
+2025/01/06-13:00:25.794 8aa3 Delete type=0 #116
+2025/01/06-13:00:25.794 8aa3 Manual compaction at level-0 from '\x00+\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00,\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/01/06-13:00:27.536 8a9c Compacting 1@1 + 1@2 files
+2025/01/06-13:00:27.728 8a9c Generated table #122@1: 43588 keys, 1575499 bytes
+2025/01/06-13:00:27.728 8a9c Compacted 1@1 + 1@2 files => 1575499 bytes
+2025/01/06-13:00:27.761 8a9c compacted to: files[ 0 0 1 0 0 0 0 ]
+2025/01/06-13:00:27.762 8a9c Delete type=2 #118
+2025/01/06-13:00:27.762 8a9c Delete type=2 #121

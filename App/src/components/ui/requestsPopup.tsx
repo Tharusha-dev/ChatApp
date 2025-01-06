@@ -29,7 +29,7 @@ export default function RequestsPopup({
   const addUniqueUser = (prevUsers: any[], newUser: any) => {
     const isExisting = prevUsers.some((user) => user.chatId === newUser.chatId);
     if (!isExisting) {
-      return [...prevUsers, newUser];
+      return [newUser,...prevUsers];
     }
     return prevUsers;
   };
@@ -44,6 +44,7 @@ export default function RequestsPopup({
         webName: user.webName,
         initialMessage: user.initialMessage,
         metadata: user.metadata,
+        type: user.type,
         webEmail: user.webEmail,
       })
     );

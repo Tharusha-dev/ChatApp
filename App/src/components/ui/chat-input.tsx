@@ -24,7 +24,7 @@ export default function ChatInputComponent({
 }) {
   const [message, setMessage] = useState("");
 
-  const [uppy] = useState(() => new Uppy().use(Tus, { endpoint: 'http://localhost:1080/files' }));
+  const [uppy] = useState(() => new Uppy().use(Tus, {  endpoint: 'https://app.chatzu.ai/files/' }));
   useUppyEvent(uppy, 'upload-success', (file, response) => {
     console.log('File uploaded successfully:', file);
     console.log('Upload response:', response);

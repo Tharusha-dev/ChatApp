@@ -60,6 +60,8 @@ export default function Websites() {
       msg_2: "What is your name?",
       msg_3: "What is your email?",
       msg_4: "How can we help?",
+      allow_telegram: true,
+      allow_whatsapp: true,
     }
   })
 
@@ -104,6 +106,8 @@ export default function Websites() {
           msg_2: newWebsite.metadata.msg_2,
           msg_3: newWebsite.metadata.msg_3,
           msg_4: newWebsite.metadata.msg_4,
+          allow_telegram: newWebsite.metadata.allow_telegram,
+          allow_whatsapp: newWebsite.metadata.allow_whatsapp,
         }
       });
       
@@ -402,7 +406,30 @@ export default function Websites() {
               onChange={(e) => setNewWebsite({ ...newWebsite, metadata: { ...newWebsite.metadata, msg_4: e.target.value } })}
             />
           </div>
-
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="allow_telegram" className="text-right">
+            Telegram
+            </Label>
+            <Checkbox
+              id="allow_telegram"
+                  
+              checked={newWebsite.metadata.allow_telegram}
+              className="col-span-3"
+              onCheckedChange={(e) => setNewWebsite({ ...newWebsite, metadata: { ...newWebsite.metadata, allow_telegram: e } })}
+            />
+          </div>       <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="allow_whatsapp" className="text-right">
+              Whatsapp
+            </Label>
+            <Checkbox
+              id="allow_whatsapp"
+              
+              checked={newWebsite.metadata.allow_whatsapp}
+              className="col-span-3"
+              onCheckedChange={(e) => setNewWebsite({ ...newWebsite, metadata: { ...newWebsite.metadata, allow_whatsapp: e } })}
+            />
+             
+          </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="chat_icon" className="text-right">
               Chat Icon

@@ -177,6 +177,22 @@ function HomeContent() {
     });
 
     const data = await res.json();
+    console.log("data", data);
+    setChatId(data.chatId);
+    return data;
+  }
+
+  async function whatsappJoin() {
+    const res = await fetch(`${API_URL}/whatsapp/join`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ websiteId, currentUrl }),
+    });
+
+    const data = await res.json();
+    console.log("data", data);
     setChatId(data.chatId);
     return data;
   }
@@ -267,14 +283,14 @@ function HomeContent() {
       console.log("initalChatSequence", initalChatSequence, chatMsg);
 
       if (initalChatSequence.current === "welcome") {
-        setChats((prevChats) => [
-          ...prevChats,
-          {
-            msg: chatMsg,
-            timestamp: Date.now(),
-            sender: "web",
-          },
-        ]);
+        // setChats((prevChats) => [
+        //   ...prevChats,
+        //   {
+        //     msg: chatMsg,
+        //     timestamp: Date.now(),
+        //     sender: "web",
+        //   },
+        // ]);
         setCurrentChatMethod("select");
         // initalChatSequence.current = "name";
       } else if (initalChatSequence.current === "name") {
@@ -404,9 +420,9 @@ function HomeContent() {
           sender: "worker",
         },
       ]);
-
-
       
+      // Immediately set the chat method to "select" to show the buttons
+      setCurrentChatMethod("select");
     } 
     else if (initalChatSequence.current === "name") {
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -498,22 +514,36 @@ function HomeContent() {
     }
   }
   const handleChatMethodSelect = async (method: "chat" | "telegram" | "whatsapp") => {
+    let chatId_: any;
     if (method === "chat") {
       initalChatSequence.current = "name";
       initialChatSequence("", metadata?.msg_2);
     } else {
-      if(method === "telegram"){
-      let res = await telegramJoin();
-      console.log(res);
+      if (method === "telegram") {
+        let res = await telegramJoin();
+        console.log(res);
+        chatId_ = res.chatId;
+        setChats((prevChats) => [
+          ...prevChats,
+          {
+            msg: `[telegram][link=https://t.me/CustomerSupport222_Bot?start=${chatId_}][/telegram]`,
+            timestamp: Date.now(),
+            sender: "worker",
+          },
+        ]);
+      } else if (method === "whatsapp") {
+        let res = await whatsappJoin();
+        console.log(res);
+        chatId_ = res.chatId;
+        setChats((prevChats) => [
+          ...prevChats,
+          {
+            msg: `[whatsapp][link=https://wa.me/+1234567890?text=start%20${chatId_}][/whatsapp]`,
+            timestamp: Date.now(),
+            sender: "worker",
+          },
+        ]);
       }
-      setChats((prevChats) => [
-        ...prevChats,
-        {
-          msg: "We will contact you later",
-          timestamp: Date.now(),
-          sender: "worker",
-        },
-      ]);
     }
     setCurrentChatMethod(method);
   };
@@ -582,6 +612,10 @@ function HomeContent() {
               const fileRegex = /^\[file\]\[link="(.+?)"\]\[name="(.+?)"\]\[type="(.+?)"\]\[\/file\]$/;
               const fileMatch = message.msg.match(fileRegex);
 
+              // Add Telegram regex
+              const telegramRegex = /^\[telegram\]\[link=(.+?)\]\[\/telegram\]$/;
+              const telegramMatch = message.msg.match(telegramRegex);
+
               if (fileMatch) {
                 // File message
                 const [_, link, name, type] = fileMatch;
@@ -613,6 +647,37 @@ function HomeContent() {
                     </div>
                   </ChatBubble>
                 );
+              } else if (telegramMatch) {
+                // Telegram message
+                const [_, link] = telegramMatch;
+                return (
+                  <ChatBubble
+                    key={message.timestamp}
+                    variant={message.sender === "web" ? "received" : "sent"}
+                  >
+                    <ChatBubbleAvatar
+                      fallback={message.sender === "web" ? "Web" : "You"}
+                    />
+                    <div className="relative group">
+                      <ChatBubbleMessage
+                        variant={message.sender === "web" ? "received" : "sent"}
+                      >
+                        <div 
+                          onClick={() => window.open(link, '_blank')}
+                          className="cursor-pointer hover:bg-gray-100 p-2 rounded-lg flex items-center gap-2"
+                        >
+                          <div className="bg-blue-100 p-2 rounded">
+                            📱
+                          </div>
+                          <div>
+                            <p className="font-medium">Continue on Telegram</p>
+                            <p className="text-sm text-blue-500 hover:underline">Click to open Telegram</p>
+                          </div>
+                        </div>
+                      </ChatBubbleMessage>
+                    </div>
+                  </ChatBubble>
+                );
               }
 
               // Regular message (existing code)
@@ -628,7 +693,39 @@ function HomeContent() {
                     <ChatBubbleMessage
                       variant={message.sender === "web" ? "received" : "sent"}
                     >
-                      {message?.msg}
+                      {(() => {
+                        const fileRegex = /^\[file\]\[link="(.+?)"\]\[name="(.+?)"\]\[type="(.+?)"\]\[\/file\]$/;
+                        const telegramRegex = /^\[telegram\]\[link=(.+?)\]\[\/telegram\]$/;
+                        const whatsappRegex = /^\[whatsapp\]\[link=(.+?)\]\[\/whatsapp\]$/;
+                        
+                        const fileMatch = message.msg.match(fileRegex);
+                        const telegramMatch = message.msg.match(telegramRegex);
+                        const whatsappMatch = message.msg.match(whatsappRegex);
+
+                        if (fileMatch) {
+                          // File message rendering...
+                        } else if (telegramMatch) {
+                          // Telegram message rendering...
+                        } else if (whatsappMatch) {
+                          const [_, link] = whatsappMatch;
+                          return (
+                            <div 
+                              onClick={() => window.open(link, '_blank')}
+                              className="cursor-pointer hover:bg-gray-100 p-2 rounded-lg flex items-center gap-2"
+                            >
+                              <div className="bg-green-100 p-2 rounded">
+                                📱
+                              </div>
+                              <div>
+                                <p className="font-medium">Continue on WhatsApp</p>
+                                <p className="text-sm text-green-500 hover:underline">Click to open WhatsApp</p>
+                              </div>
+                            </div>
+                          );
+                        } else {
+                          return message?.msg;
+                        }
+                      })()}
                       {message?.sender !== "web" && (
                         <button
                           onClick={() => {
@@ -768,16 +865,19 @@ function HomeContent() {
               type="button"
               size="icon"
               className="w-1/5"
+             
               onClick={() => {
                 sendChat();
                 setChatMsg("");
               }}
-              disabled={chatDisconnected || waitingForWorker}
+              disabled={chatDisconnected || waitingForWorker || currentChatMethod !== "chat"}
             >
               {waitingForWorker ? "Waiting for worker" : "Send"}
             </Button>
 
             <Button
+              disabled={chatDisconnected || waitingForWorker || currentChatMethod !== "chat"}
+
               onClick={async () => {
                 disconnect();
               }}

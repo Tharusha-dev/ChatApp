@@ -18,9 +18,14 @@
     "geoip-country": "^4.2.160",
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.11.0",
+    "mongoose": "^8.9.3",
     "node-telegram-bot-api": "^0.66.0",
+    "qrcode-terminal": "^0.12.0",
     "socket.io": "^4.8.1",
+    "tus-js-client": "^4.2.3",
     "tus-node-server": "^0.9.0",
-    "uuid": "^11.0.3"
+    "uuid": "^11.0.3",
+    "whatsapp-web.js": "^1.26.0",
+    "wwebjs-mongo": "^1.1.0"
   }
 }

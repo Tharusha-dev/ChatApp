@@ -11,6 +11,7 @@ interface User {
     msg: string
   }
   userToken: string
+  type: string | undefined
 }
 
 interface UserCardProps {
@@ -43,10 +44,16 @@ export function BufferCard({ user, onAccept }: UserCardProps) {
                   <Clock className="mr-1 h-3 w-3" />
                   {formatTime(user.initialMessage.timestamp)}
                 </div>
+                <p className={`flex items-center text-xs text-muted-foreground ${user.type === "whatsapp" ? "bg-[#25D366]" : user.type === "telegram" ? "bg-[#229ED9]" : "bg-gray-500"} text-white px-2 py-1 rounded-md`}>
+                  {user.type || "web"}
+                </p>
               </div>
-              <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
-                {user.initialMessage.msg}
-              </p>
+              <div className="flex items-center space-x-2">
+                <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
+                  {user.initialMessage.msg}
+                </p> 
+              
+              </div>
             </div>
           </div>
           <Button size="sm" onClick={() => onAccept(user)}>

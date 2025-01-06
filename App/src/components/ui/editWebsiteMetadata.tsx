@@ -14,6 +14,8 @@ import { useStore } from "@/stores/store";
 import { useState } from "react";
 import { Website } from "@/types/types";
 import { ChatIconDropdown } from "./chatIconDropdown";
+import { Checkbox } from "@/components/ui/checkbox";
+
 
 export function EditWebsiteMetadata({ website }: { website: Website }) {
   const [title, setTitle] = useState(website.metadata.title);
@@ -22,6 +24,8 @@ export function EditWebsiteMetadata({ website }: { website: Website }) {
   const [msg_2, setMsg_2] = useState(website.metadata.msg_2);
   const [msg_3, setMsg_3] = useState(website.metadata.msg_3);
   const [msg_4, setMsg_4] = useState(website.metadata.msg_4);
+  const [allow_telegram, setAllow_telegram] = useState(website.metadata.allow_telegram);
+  const [allow_whatsapp, setAllow_whatsapp] = useState(website.metadata.allow_whatsapp);
   const [chat_icon, setChatIcon] = useState(website.chat_icon);
 
   const updateWebsite = useStore((state) => state.updateWebsite);
@@ -116,7 +120,29 @@ export function EditWebsiteMetadata({ website }: { website: Website }) {
               onChange={(e) => setMsg_4(e.target.value)}
             />
           </div>
-
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="allow_telegram" className="text-right">
+            Telegram
+            </Label>
+            <Checkbox
+              id="allow_telegram"
+                  
+              checked={allow_telegram}
+              className="col-span-3"
+              onCheckedChange={(e) => setAllow_telegram(e as boolean)}
+            />
+          </div>       <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="allow_whatsapp" className="text-right">
+              Whatsapp
+            </Label>
+            <Checkbox
+              id="allow_whatsapp"
+              
+              checked={allow_whatsapp}
+              className="col-span-3"
+              onCheckedChange={(e) => setAllow_whatsapp(e as boolean)}
+            />
+          </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="chat_icon" className="text-right">
               Chat Icon

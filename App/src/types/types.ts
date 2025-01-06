@@ -19,6 +19,8 @@ export interface Worker {
        msg_2: string;
        msg_3: string;
        msg_4: string;
+       allow_telegram: boolean;
+       allow_whatsapp: boolean;
     }
   }
   

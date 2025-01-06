@@ -80,30 +80,6 @@ useEffect(() => {
     if (socketIn) {
       console.log("Socket state changed");
       setSocket(socketIn);
-
-      // socketIn.on("connect", () => {
-      //   console.log("Socket connected in useEffect");
-      // });
-
-      // socketIn.on("buffer-request", (data) => {
-      //   // debug(data);
-      //   console.log(data);
-      //   updateBuffer(data);
-      // });
-
-      // socketIn.on("party-disconnected", (data) => {
-      //   console.log("party disconnected:", data);
-      //   setChatDisconnected(true);
-        
-      //   setRefreshActiveChat(true);
-      // });
-
-      // socketIn.on("chat-msg", (data) => {
-      //   console.log("chat msg:", data);
-      //   if(data?.msg?.sender == "web"){
-      //     handleChat(data);
-      //   }
-      // });
     }
   }, [socketIn]);
 
@@ -131,8 +107,30 @@ useEffect(() => {
     (selectedDomains.length === 0 || selectedDomains.includes(chat.websiteDomain))
   );
 
+
+
+  const getLatestTimestamp = (chat: any): number => {
+    if (!chat.chat || chat.chat.length === 0) return 0;
+    
+    const lastMessage = chat.chat[chat.chat.length - 1];
+    const timestamp = lastMessage.timestamp;
+    
+    // Handle both ISO string and numeric timestamp formats
+    return typeof timestamp === 'string' 
+      ? new Date(timestamp).getTime()
+      : Number(timestamp);
+  };
+
   const groupChatsByEmail = (chats: any[]) => {
-    return chats.reduce((groups: { [key: string]: any[] }, chat) => {
+    console.log("grouping chats by email", chats);
+    
+    // First, sort all chats by timestamp
+    const sortedChats = [...chats].sort((a, b) => 
+      getLatestTimestamp(b) - getLatestTimestamp(a)
+    );
+
+    // Group chats by email
+    const groups = sortedChats.reduce((groups: { [key: string]: any[] }, chat) => {
       const email = chat.webEmail || 'No Email';
       if (!groups[email]) {
         groups[email] = [];
@@ -140,6 +138,16 @@ useEffect(() => {
       groups[email].push(chat);
       return groups;
     }, {});
+
+    // Convert to array of [email, chats] pairs and sort by most recent chat in each group
+    const sortedGroups = Object.entries(groups).sort(([, chatsA], [, chatsB]) => {
+      const latestA = Math.max(...chatsA.map(getLatestTimestamp));
+      const latestB = Math.max(...chatsB.map(getLatestTimestamp));
+      return latestB - latestA;
+    });
+
+    // Convert back to object
+    return Object.fromEntries(sortedGroups);
   };
 
   return (
@@ -210,6 +218,7 @@ useEffect(() => {
                 {chats.map((chat) => (
                   <ChatInfoCard
                     key={chat.chatId}
+                    type={chat?.type}
                     webName={chat?.webName}
                     webEmail={chat?.webEmail}
                     metadata={chat?.metadata}
