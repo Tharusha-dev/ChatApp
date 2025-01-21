@@ -108,8 +108,8 @@ const [socket, setSocket] = useState<Socket | null>(null);
    
    {/* http://localhost:3001/?websiteId=6767dc57db29917c2b71c8ce&currentUrl=test.com */}
     {/* <Script src="loader.js" website-id="6767dc57db29917c2b71c8ce" icon-url="https://www.svgrepo.com/show/529481/chat-round-dots.svg"/> */}
-    <Script src="https://chat.chatzu.ai/loader.js" website-id="67696cf926037c6b8c72b52f" icon-url="https://www.svgrepo.com/show/529481/chat-round-dots.svg"/>
-      
+    <Script src="./loader.js" website-id="6767dc57db29917c2b71c8ce" icon-url="https://www.svgrepo.com/show/529481/chat-round-dots.svg"/>
+    {/* http://localhost:3001/?websiteId=6767dc57db29917c2b71c8ce&currentUrl=test.com */}
       <div>
         
         <button

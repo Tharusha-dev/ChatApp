@@ -32,7 +32,7 @@ export function ChatIconDropdown({ onSelect,  selectedIcon }: SimpleImageSelecto
  
     return (
     <Select onValueChange={onSelect} defaultValue={selectedIcon}>
-      <SelectTrigger className="w-full" style={{height: "80%"}}>
+      <SelectTrigger style={{height: "80%", width: "max-content"}}>
         <SelectValue placeholder="Select an image" />
       </SelectTrigger>
       <SelectContent>

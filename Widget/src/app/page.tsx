@@ -27,7 +27,7 @@ import { useCallback, useEffect, useState, useRef } from "react";
 
 import { Input } from "@/components/ui/input";
 import { Suspense } from "react";
-import { CornerDownLeft, Edit, Icon, RotateCcw, Trash } from "lucide-react";
+import { Check, Copy, CornerDownLeft, Edit, Icon, RotateCcw, Trash } from "lucide-react";
 //@ts-ignore
 import { FileIcon, defaultStyles } from "react-file-icon";
 
@@ -55,12 +55,11 @@ function HomeContent() {
   const websiteId = queryParams.get("websiteId");
   const currentUrl = queryParams.get("currentUrl");
 
-  //const API_URL = "http://localhost:8000";
+  // const API_URL = "http://localhost:8000";
   const API_URL =  "https://app.chatzu.ai/api";
 
   // const WHATSAPP_NUMBER = "+94718550509"
-  const WHATSAPP_NUMBER = "+447383545694"
-  
+  const WHATSAPP_NUMBER = "+447383545694";
 
   const [token, setToken] = useState<string | null>(null);
   // const [socket, setSocket] = useState<Socket | null>(null);
@@ -88,6 +87,7 @@ function HomeContent() {
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [uploadModalOpen, setUploadModalOpen] = useState<boolean>(false);
   const [workerConnected, setWorkerConnected] = useState<boolean>(false);
+  const [copiedMessageId, setCopiedMessageId] = useState(null);
 
   const [currentChatMethod, setCurrentChatMethod] = useState<
     null | "select" | "chat" | "telegram" | "whatsapp"
@@ -102,25 +102,51 @@ function HomeContent() {
     const contacts = [
       { id: "chat", label: "Live Chat", icon: "/livechatColor.svg" },
     ];
-    
+
     if (metadata?.allow_telegram) {
-      contacts.push({ id: "telegram", label: "Telegram", icon: "/telegram.svg" });
+      contacts.push({
+        id: "telegram",
+        label: "Telegram",
+        icon: "/telegram.svg",
+      });
     }
-    
+
     if (metadata?.allow_whatsapp) {
-      contacts.push({ id: "whatsapp", label: "WhatsApp", icon: "/whatsapp.svg" });
+      contacts.push({
+        id: "whatsapp",
+        label: "WhatsApp",
+        icon: "/whatsapp.svg",
+      });
     }
-    
+
     setAvailableContacts(contacts);
   }, [metadata]);
 
   const styledIcons = Object.keys(defaultStyles);
+  const actionAgentIcons = [
+
+    {
+      icon: Copy,
+      type: "copy",
+    },
+  ];
   // const [chatId, setChatId] = useState<string | null>(null);
   // Add function to handle typing timeout
   const handleTypingTimeout = useCallback(() => {
     disconnect();
     setStatusMsg("You have been disconnected due to inactivity");
   }, []);
+  const handleCopyMessage = async (message: string, messageId: number) => {
+    try {
+      await navigator.clipboard.writeText(message);
+      console.log("messageId", message);
+      //@ts-ignore
+      setCopiedMessageId(messageId);
+      setTimeout(() => setCopiedMessageId(null), 1000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
 
   // Add effect to manage typing timeout
   useEffect(() => {
@@ -159,7 +185,7 @@ function HomeContent() {
 
   // Add a ref for the message list
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const formatDate = (date:any) => {
+  const formatDate = (date: any) => {
     const options = {
       weekday: "long",
       hour: "numeric",
@@ -169,7 +195,7 @@ function HomeContent() {
     //@ts-ignore
     return new Date(date).toLocaleDateString("en-US", options);
   };
-  
+
   // Add scroll to bottom function
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -275,11 +301,9 @@ function HomeContent() {
     // const newSocket = io(`${API_URL}`, {
     //   path: "/socket.io",
     //   query: {
-
-
-    const newSocket = io("https://app.chatzu.ai", {
-      path: "/api/socket.io",
-query: {
+            const newSocket = io("https://app.chatzu.ai", {
+              path: "/api/socket.io",
+        query: {
         type: "web-chat-request",
         name: name,
         userToken: data.userToken,
@@ -673,11 +697,9 @@ query: {
   }, [socket]);
 
   return (
-    <div className="">
-      {/* @ts-ignore */}
-      <ExpandableChat size="lg" position="middle">
-        <ExpandableChatHeader className="flex justify-start gap-2">
     
+      <ExpandableChat size="sm" position="bottom-right" style={{border:"none"}}>
+        <ExpandableChatHeader className="flex justify-start gap-2">
           <>
             <Image
               aria-hidden
@@ -692,39 +714,37 @@ query: {
             </div>
           </>
         </ExpandableChatHeader>
-        {workerConnected && 
-        
-        <div className="flex bg-white w-full py-2 px-4 justify-center items-center gap-2">
-        <Button
-          size="sm"
-          className="w-full bg-[#2970FF] text-white hover:bg-[#2C7DFF]"
-          onClick={async () => {
-            // First reset all states except socket-related ones
-            setAction("restart");
-            setOpen(true);
-          }}
-        >
-          <RotateCcw className="size-3" />
-          Restart Chat
-        </Button>
-        <Button
-          variant="destructive"
-          size="sm"
-          className="w-full"
-          onClick={() => {
-          
-            setAction("end");
-            setOpen(true);
-          }}
-        >
-          <Trash className="size-3" />
-          End Chat
-        </Button>
-      </div>
-        }
-       
-        <ExpandableChatBody>
-          <ChatMessageList>
+        {workerConnected && (
+          <div className="flex bg-white w-full py-2 px-4 justify-center items-center gap-2">
+            <Button
+              size="sm"
+              className="w-full bg-[#2970FF] text-white hover:bg-[#2C7DFF]"
+              onClick={async () => {
+                // First reset all states except socket-related ones
+                setAction("restart");
+                setOpen(true);
+              }}
+            >
+              <RotateCcw className="size-3" />
+              Restart Chat
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="w-full"
+              onClick={() => {
+                setAction("end");
+                setOpen(true);
+              }}
+            >
+              <Trash className="size-3" />
+              End Chat
+            </Button>
+          </div>
+        )}
+
+        <ExpandableChatBody className="border-b-0">
+          <ChatMessageList className="border-b-0">
             {chats?.length > 0 &&
               chats.map(
                 (message: {
@@ -734,41 +754,38 @@ query: {
                 }) => {
                   // Check if message is a file
                   const fileRegex =
-                  /^\[file\]\[link="(.+?)"\]\[name="(.+?)"\]\[type="(.+?)"\]\[\/file\]$/;
-                const telegramRegex =
-                  /^\[telegram\]\[link=(.+?)\]\[\/telegram\]$/;
-                const whatsappRegex =
-                  /^\[whatsapp\]\[link=(.+?)\]\[\/whatsapp\]$/;
+                    /^\[file\]\[link="(.+?)"\]\[name="(.+?)"\]\[type="(.+?)"\]\[\/file\]$/;
+                  const telegramRegex =
+                    /^\[telegram\]\[link=(.+?)\]\[\/telegram\]$/;
+                  const whatsappRegex =
+                    /^\[whatsapp\]\[link=(.+?)\]\[\/whatsapp\]$/;
 
-                const fileMatch = message.msg.match(fileRegex);
-                const telegramMatch =
-                  message.msg.match(telegramRegex);
-                const whatsappMatch =
-                  message.msg.match(whatsappRegex);
+                  const fileMatch = message.msg.match(fileRegex);
+                  const telegramMatch = message.msg.match(telegramRegex);
+                  const whatsappMatch = message.msg.match(whatsappRegex);
 
                   console.log(message);
                   return (
                     <ChatBubble
                       key={message.timestamp}
                       variant={message.sender === "web" ? "sent" : "received"}
+                      className="text-xs"
                     >
                       {message.sender != "web" && (
                         <ChatBubbleAvatar fallback="A" />
                       )}
                       <div className="relative group">
                         {(() => {
-                        
-
                           if (fileMatch) {
                             // File message
                             const [_, link, name, type] = fileMatch;
                             return (
                               <ChatBubbleMessage
-                              variant={
-                                message.sender === "web" ? "sent" : "received"
-                              }
-                              isSender={message.sender === "web"}
-                              user={"Agent"}
+                                variant={
+                                  message.sender === "web" ? "sent" : "received"
+                                }
+                                isSender={message.sender === "web"}
+                                user={"Agent"}
                                 time={formatDate(message.timestamp)}
                               >
                                 <div
@@ -800,11 +817,13 @@ query: {
                             return (
                               <div className="flex flex-col gap-2">
                                 <ChatBubbleMessage
-                                 variant={
-                                  message.sender === "web" ? "sent" : "received"
-                                }
-                                isSender={message.sender === "web"}
-                                user={"Agent"}
+                                  variant={
+                                    message.sender === "web"
+                                      ? "sent"
+                                      : "received"
+                                  }
+                                  isSender={message.sender === "web"}
+                                  user={"Agent"}
                                   time={formatDate(message.timestamp)}
                                 >
                                   Click here to start Telegram
@@ -851,12 +870,14 @@ query: {
                             return (
                               <div className="flex flex-col gap-2">
                                 <ChatBubbleMessage
-                             variant={
-                              message.sender === "web" ? "sent" : "received"
-                            }
-                            isSender={message.sender === "web"}
-                            user={"Agent"}
-                              time={formatDate(message.timestamp)}
+                                  variant={
+                                    message.sender === "web"
+                                      ? "sent"
+                                      : "received"
+                                  }
+                                  isSender={message.sender === "web"}
+                                  user={"Agent"}
+                                  time={formatDate(message.timestamp)}
                                 >
                                   Click here to start WhatsApp
                                 </ChatBubbleMessage>
@@ -904,14 +925,14 @@ query: {
                                 }
                                 isSender={message.sender === "web"}
                                 user={"Agent"}
-                                  time={formatDate(message.timestamp)}
+                                time={formatDate(message.timestamp)}
                               >
                                 {message?.msg}
                               </ChatBubbleMessage>
                             );
                           }
                         })()}
-                       
+
                         {currentChatMethod === "select" &&
                           message.msg === metadata?.msg_1 && (
                             <ChatBubbleMessage
@@ -947,63 +968,70 @@ query: {
                           )}
                       </div>
                       <ChatBubbleActionWrapper>
-                          {message?.sender == "web" && !whatsappMatch && !telegramMatch && !fileMatch && (
-                     
-
-                            <ChatBubbleAction
-                            className={`size-7`}
-                            key={"edit"}
-                            icon={<Edit className="size-4" />}
-                            onClick={() => {
-                              
-                              setEditingMessage(message);
-                              console.log("editingMessage:", message);
-
-                            
-                            }}
-                          />
-                            
-                            
+                          {message?.sender == "worker" &&
+                          !whatsappMatch &&
+                          !telegramMatch &&
+                          !fileMatch && (
+                            actionAgentIcons.map(({ icon: Icon, type }) => (
+                              <ChatBubbleAction
+                                className="size-7"
+                                key={type}
+                                icon={
+                                  type === "copy" && copiedMessageId === message.timestamp ? (
+                                    <Check className="size-4" />
+                                  ) : (
+                                    Icon && <Icon className="size-4" />
+                                  )
+                                }
+                                onClick={async () => {
+                                  if (type === "copy") {
+                                    await handleCopyMessage(message.msg, message.timestamp);
+                                  }
+                                }}
+                              />
+                            ))
                           )}
-                        </ChatBubbleActionWrapper>
+
+
+                        {message?.sender == "web" &&
+                          !whatsappMatch &&
+                          !telegramMatch &&
+                          !fileMatch && (
+                            <ChatBubbleAction
+                              className={`size-7`}
+                              key={"edit"}
+                              icon={<Edit className="size-4" />}
+                              onClick={() => {
+                                setEditingMessage(message);
+                                console.log("editingMessage:", message);
+                              }}
+                            />
+                          )}
+                      </ChatBubbleActionWrapper>
                     </ChatBubble>
                   );
                 }
               )}
-{
-  statusMsg &&   <div className="flex justify-center items-center gap-2">
-  <hr className="w-1/5 border-t-1 border-[#E9EAEB]" />
-  <p className="text-xs text-gray-500">
-  {statusMsg}
-  </p>
-  <hr className="w-1/5 border-t-1 border-[#E9EAEB]" />
-</div>
-}
+            {statusMsg && (
+              <div className="flex justify-center items-center gap-2">
+                <hr className="w-1/5 border-t-1 border-[#E9EAEB]" />
+                <p className="text-xs text-gray-500">{statusMsg}</p>
+                <hr className="w-1/5 border-t-1 border-[#E9EAEB]" />
+              </div>
+            )}
 
-{
-  chatDisconnected &&   <div className="flex justify-center items-center gap-2">
-  <hr className="w-1/5 border-t-1 border-[#E9EAEB]" />
-  <p className="text-xs text-gray-500">
-  Chat disconnected
-  </p>
-  <hr className="w-1/5 border-t-1 border-[#E9EAEB]" />
-</div>
-}
+            {chatDisconnected && (
+              <div className="flex justify-center items-center gap-2">
+                <hr className="w-1/5 border-t-1 border-[#E9EAEB]" />
+                <p className="text-xs text-gray-500">Chat disconnected</p>
+                <hr className="w-1/5 border-t-1 border-[#E9EAEB]" />
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </ChatMessageList>
         </ExpandableChatBody>
         <ExpandableChatFooter className="flex flex-col gap-[5px] items-start">
-          {/* {chatDisconnected && (
-            <div className="flex flex-col items-center justify-center">
-              <p>The worker has disconnected</p>
-            </div>
-          )}
-
-          {statusMsg && (
-            <div className="flex flex-col items-center justify-center">
-              <p>{statusMsg}</p>
-            </div>
-          )} */}
+  
 
           <ChatInput
             value={chatMsg}
@@ -1020,88 +1048,83 @@ query: {
               currentChatMethod !== "chat"
             }
           />
-
-          
         </ExpandableChatFooter>
 
-
         {open && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40">
-          <div className="bg-white space-y-4 rounded-lg p-4 w-[80%] max-w-md">
-            <Dialog>
-              <DialogHeader>
-                <DialogTitle className="text-left">
-                  {action === "restart" ? (
-                    <div className="flex items-center gap-2 bg-[#2970FF] rounded w-fit p-2 mb-3">
-                      <RotateCcw className="p-1" color="#ffffff" />
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 bg-red-500 rounded w-fit p-2 mb-3">
-                      <Trash className="p-1" color="#ffffff" />
-                    </div>
-                  )}
-                  {action === "restart" ? "Restart Chat" : "End Chat"}
-                </DialogTitle>
-                <DialogDescription className="mb-4 text-left">
-                  {action === "restart"
-                    ? "Are you sure you want to restart? Your current conversation will be lost."
-                    : "Are you sure you want to end this conversation? You can't undo this action."}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="flex flex-col gap-2 border-t border-gray-100">
-                <Button
-                  className={`w-full ${
-                    action === "restart"
-                      ? "bg-[#2970FF] text-white hover:bg-[#2C7DFF]"
-                      : "bg-destructive text-destructive-foreground hover:bg-destructive/95"
-                  }`}
-                  onClick={async()=> {
-                    if(action === "restart"){
-                      setChats([]);
-                      setStatusMsg(null);
-                      setCurrentChatMethod("select");
-                      setToken(null);
-                      setChatId(null);
-                      setInitialMessage(null);
-                      setIntialized(false);
-                      setName(null);
-                      setEmail(null);
-                      setWorkerConnected(false);
-                      waitingForWorker.current = false;
-                      initalChatSequence.current = "welcome";
-                      
-                      // Then disconnect socket
-                      await disconnect();
-                      
-                      // Finally reset connection states
-                      setChatDisconnected(false);
-                      
-                      // Restart initial chat sequence with welcome message
-                      initialChatSequence("", metadata?.msg_1);
-                      setOpen(false);
-                    }else {
-                      disconnect();
-                      setOpen(false);
-                    }
-                  }}
-                >
-                  {action === "restart" ? "Restart Chat" : "End Chat"}
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => setOpen(false)}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </Dialog>
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40">
+            <div className="bg-white space-y-4 rounded-lg p-4 w-[80%] max-w-md">
+              <Dialog>
+                <DialogHeader>
+                  <DialogTitle className="text-left">
+                    {action === "restart" ? (
+                      <div className="flex items-center gap-2 bg-[#2970FF] rounded w-fit p-2 mb-3">
+                        <RotateCcw className="p-1" color="#ffffff" />
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 bg-red-500 rounded w-fit p-2 mb-3">
+                        <Trash className="p-1" color="#ffffff" />
+                      </div>
+                    )}
+                    {action === "restart" ? "Restart Chat" : "End Chat"}
+                  </DialogTitle>
+                  <DialogDescription className="mb-4 text-left">
+                    {action === "restart"
+                      ? "Are you sure you want to restart? Your current conversation will be lost."
+                      : "Are you sure you want to end this conversation? You can't undo this action."}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex flex-col gap-2 border-t border-gray-100">
+                  <Button
+                    className={`w-full ${
+                      action === "restart"
+                        ? "bg-[#2970FF] text-white hover:bg-[#2C7DFF]"
+                        : "bg-destructive text-destructive-foreground hover:bg-destructive/95"
+                    }`}
+                    onClick={async () => {
+                      if (action === "restart") {
+                        setChats([]);
+                        setStatusMsg(null);
+                        setCurrentChatMethod("select");
+                        setToken(null);
+                        setChatId(null);
+                        setInitialMessage(null);
+                        setIntialized(false);
+                        setName(null);
+                        setEmail(null);
+                        setWorkerConnected(false);
+                        waitingForWorker.current = false;
+                        initalChatSequence.current = "welcome";
+
+                        // Then disconnect socket
+                        await disconnect();
+
+                        // Finally reset connection states
+                        setChatDisconnected(false);
+
+                        // Restart initial chat sequence with welcome message
+                        initialChatSequence("", metadata?.msg_1);
+                        setOpen(false);
+                      } else {
+                        disconnect();
+                        setOpen(false);
+                      }
+                    }}
+                  >
+                    {action === "restart" ? "Restart Chat" : "End Chat"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </Dialog>
+            </div>
           </div>
-        </div>
-      )}
-
-
+        )}
       </ExpandableChat>
-    </div>
+    
   );
 }

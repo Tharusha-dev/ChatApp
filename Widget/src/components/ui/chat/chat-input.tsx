@@ -8,7 +8,7 @@ import { ReplyAndEditBox } from "@/components/ui/replyAndEditBox";
 import "@uppy/core/dist/style.min.css";
 import "@uppy/dashboard/dist/style.min.css";
 import Tus from "@uppy/tus";
-import { Send } from "lucide-react";
+import { Paperclip, Send } from "lucide-react";
 interface ChatInputProps
   extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {}
 
@@ -51,7 +51,7 @@ const ChatInput = React.forwardRef<HTMLTextAreaElement, any>(
               className="absolute left-4 text-muted-foreground hover:text-foreground"
               aria-label="Attach file"
             >
-              📎
+             <Paperclip size={18} />
             </button>
           </DialogTrigger>
           <DialogContent className="max-w-full w-full">

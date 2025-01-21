@@ -40,28 +40,30 @@ export default function RequestsPopup({
 
   // Update the setBufferUsers usage to ensure uniqueness
   const handleAccept = (user: any) => {
-    console.log("user", {
-      workerToken: workerToken,
-      webToken: user.userToken,
-      chatId: user.chatId,
-      webName: user.webName,
-      initialMessage: user.initialMessage,
-      chat : [
-        {
-          msg : user.initialMessage,
-          timestamp : Date.now(),
-          sender : "web"
-        }
-      ],
-      metadata: user.metadata,
-      type: user.type,
-      webEmail: user.webEmail,
-    });
+    // console.log("user", {
+    //   workerToken: workerToken,
+    //   webToken: user.userToken,
+    //   websiteDomain: user.websiteDomain,
+    //   chatId: user.chatId,
+    //   webName: user.webName,
+    //   initialMessage: user.initialMessage,
+    //   chat : [
+    //     {
+    //       msg : user.initialMessage,
+    //       timestamp : Date.now(),
+    //       sender : "web"
+    //     }
+    //   ],
+    //   metadata: user.metadata,
+    //   type: user.type,
+    //   webEmail: user.webEmail,
+    // });
     const newchats = addUniqueUser(workerChats,  {
       workerToken: workerToken,
       webToken: user.userToken,
       chatId: user.chatId,
       webName: user.webName,
+      websiteDomain: user.websiteDomain,
       initialMessage: user.initialMessage,
       chat : [
         {
@@ -91,10 +93,10 @@ export default function RequestsPopup({
 
   console.log(bufferUsers);
 
-  useEffect(() => {
-    console.log("bufferUsers changed");
-    console.log(bufferUsers);
-  }, [bufferUsers]);
+  // useEffect(() => {
+  //   console.log("bufferUsers changed");
+  //   console.log(bufferUsers);
+  // }, [bufferUsers]);
 
   return (
     <Dialog>

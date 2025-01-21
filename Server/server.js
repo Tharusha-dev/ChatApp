@@ -9,7 +9,7 @@ import bcrypt from "bcrypt";
 import geoip from "geoip-country";
 import TelegramBot from "node-telegram-bot-api";
 import * as tus from "tus-js-client";
-
+// import 'dotenv/config'
 import Whatsapp from "whatsapp-web.js";
 const { Client, RemoteAuth } = Whatsapp;
 import qrcode from "qrcode-terminal";
@@ -17,10 +17,11 @@ import { createTransport } from "nodemailer";
 import { MongoStore } from "wwebjs-mongo";
 import mongoose from "mongoose";
 
-const mongoUri = process.env.MONGO_URI || "mongodb://localhost:27017";
+const mongoUri = "mongodb://localhost:27017";
 const mongoClient = new MongoClient(mongoUri);
 
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+// const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
+const TELEGRAM_BOT_TOKEN = "7827757019:AAFNwWXkEEgOZjOwGJ5MoSUhngC-7VEW0dQ"
 const telegramBot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
 
 const db = mongoClient.db("chatapp-admin");
@@ -34,7 +35,9 @@ const tokenSecret = "secret";
 const salt = 10;
 
 let whatsappClient_1;
-const whatsappClient_1_NUMBER = process.env.WHATSAPP_CLIENT_1_NUMBER;
+// const whatsappClient_1_NUMBER = process.env.WHATSAPP_CLIENT_1_NUMBER;
+const whatsappClient_1_NUMBER = "94718550509";
+
 
 const app = express();
 app.use(express.json());
@@ -177,6 +180,9 @@ mongoose.connect(mongoUri).then(() => {
 
         const chat = await chatsCollection.findOne({
           _id: new ObjectId(mongoChatId),
+        }).catch((e)=>{
+          console.log(e)
+          return null;
         });
         if (!chat) return;
 
@@ -214,7 +220,11 @@ mongoose.connect(mongoUri).then(() => {
         console.log(whatsappChatId);
         const chats = await chatsCollection
           .find({ whatsappChatId: whatsappChatId })
-          .toArray();
+          .toArray()
+          .catch((e) => {
+            console.log(e);
+            return [];
+          });
 
         if (!chats) return;
 
@@ -508,7 +518,14 @@ app.post(
     // Get User-Agent
     const userAgent = req.headers["user-agent"];
 
-    const userCountry = geoip.lookup("207.97.227.239").country;
+    let userCountry = "userCountry";
+
+    // const userCountry = geoip.lookup(ip).country;
+    try {
+      userCountry = geoip.lookup(ip).country;
+    } catch (error) {
+      console.log(error);
+    }
 
     // Get other useful headers
     const metadata = {
@@ -580,13 +597,20 @@ app.post(
     // Get User-Agent
     const userAgent = req.headers["user-agent"];
 
+    let userCountry = "userCountry";
+
     // const userCountry = geoip.lookup(ip).country;
+    try {
+      userCountry = geoip.lookup(ip).country;
+    } catch (error) {
+      console.log(error);
+    }
 
     // Get other useful headers
     const metadata = {
       ip: ip,
       userAgent: userAgent,
-      userCountry: "userCountry",
+      userCountry: userCountry,
       currentUrl: currentUrl,
     };
     logger("telegram join");
@@ -651,13 +675,22 @@ app.post(
     // Get User-Agent
     const userAgent = req.headers["user-agent"];
 
+    let userCountry = "userCountry";
+
     // const userCountry = geoip.lookup(ip).country;
+    try {
+      userCountry = geoip.lookup(ip).country;
+      // userCountry = "Sri Lanka";
+
+    } catch (error) {
+      console.log(error);
+    }
 
     // Get other useful headers
     const metadata = {
       ip: ip,
       userAgent: userAgent,
-      userCountry: "userCountry",
+      userCountry: userCountry,
       currentUrl: currentUrl,
     };
     logger("whatsapp join");
@@ -1601,6 +1634,11 @@ io.use((socket, next) => {
           throw { status: 500, message: "Database error occurred" };
         });
 
+      const website = await websitesCollection.findOne({_id: chat?.websiteId}).catch((err) => {
+        console.log(err);
+        return null;
+      });
+
       const bufferResult = await addBufferToDb({
         type: "web",
         userToken: socket.handshake.query.userToken,
@@ -1608,6 +1646,7 @@ io.use((socket, next) => {
         chatId: socket.handshake.query.chatId,
         webName: socket.handshake.query.name,
         websiteId: socket.handshake.query.websiteId,
+        websiteDomain: website?.domain,
         webEmail: chat?.webEmail,
         metadata: chat?.metadata,
       });
@@ -1631,6 +1670,7 @@ io.use((socket, next) => {
         chatId: socket.handshake.query.chatId,
         webName: socket.handshake.query.name,
         webEmail: chat?.webEmail,
+        websiteDomain: website?.domain,
         metadata: chat?.metadata,
       });
       logger(
@@ -1809,7 +1849,10 @@ telegramBot.on(
 
       const chat = await chatsCollection.findOne({
         _id: new ObjectId(mongoChatId),
-      });
+        }).catch((e)=>{
+          console.log(e);
+          return null;
+        });
       if (!chat) return;
     
       console.log("========================");
@@ -2219,7 +2262,14 @@ async function telegramAddToBuffer(msg, chatId, chatDoc, initialMessage) {
       { $set: { step: 4 } }
     );
  
+  }else{
+    telegramBot.sendMessage(chatId, "An agent will respond to your message shortly.");
   }
+
+  const website = await websitesCollection.findOne({_id: chatDoc?.websiteId}).catch((err) => {
+    console.log(err);
+    return null;
+  });  
 
 
   const bufferResult = await addBufferToDb({
@@ -2234,6 +2284,7 @@ async function telegramAddToBuffer(msg, chatId, chatDoc, initialMessage) {
     websiteId: chatDoc?.websiteId.toString(),
     webEmail: msg?.chat?.username,
     metadata: chatDoc?.metadata,
+    websiteDomain: website?.domain,
   });
 
   //TODO : VALIDATE
@@ -2260,6 +2311,7 @@ async function telegramAddToBuffer(msg, chatId, chatDoc, initialMessage) {
     websiteId: chatDoc?.websiteId.toString(),
     webEmail: msg?.chat?.username,
     metadata: chatDoc?.metadata,
+    websiteDomain: website?.domain,
   });
 }
 
@@ -2312,7 +2364,17 @@ async function whatsappAddToBuffer(msg, whatsappChatId, chatDoc, initialMessage)
       { $set: { step: 4 } }
     );
  
+  }else {
+    console.log("worker available");
+    whatsappClient_1.sendMessage(whatsappChatId, "An agent will respond to your message shortly.");
+
   }
+
+
+  const website = await websitesCollection.findOne({_id: chatDoc?.websiteId}).catch((err) => {
+    console.log(err);
+    return null;
+  });  
 
   const bufferResult = await addBufferToDb({
     userToken: chatDoc?.userToken,
@@ -2326,6 +2388,7 @@ async function whatsappAddToBuffer(msg, whatsappChatId, chatDoc, initialMessage)
     websiteId: chatDoc?.websiteId.toString(),
     webEmail: msg?.from?.split("@")[0],
     metadata: chatDoc?.metadata,
+    websiteDomain: website?.domain,
   });
 
   console.log("========================");
@@ -2347,6 +2410,7 @@ async function whatsappAddToBuffer(msg, whatsappChatId, chatDoc, initialMessage)
     websiteId: chatDoc?.websiteId.toString(),
     webEmail: msg?.from?.split("@")[0],
     metadata: chatDoc?.metadata,
+    websiteDomain: website?.domain,
   });
 }
 

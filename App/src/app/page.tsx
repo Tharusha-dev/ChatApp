@@ -105,15 +105,15 @@ export default function Home() {
 
     getData();
 
-    // const socket = io(`${API_URL}`, {
-    //   transports: ['websocket'],
-    //   path: "/socket.io",
-    //   query: { type: "worker-connect-request", token: getCookie("userToken") },
-    // });
-    const socket = io("https://app.chatzu.ai", {
-      path: "/api/socket.io",
+    const socket = io(`${API_URL}`, {
+      transports: ['websocket'],
+      path: "/socket.io",
       query: { type: "worker-connect-request", token: getCookie("userToken") },
     });
+    // const socket = io("https://app.chatzu.ai", {
+    //   path: "/api/socket.io",
+    //   query: { type: "worker-connect-request", token: getCookie("userToken") },
+    // });
     
     setSocket(socket);
 

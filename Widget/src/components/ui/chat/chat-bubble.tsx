@@ -133,7 +133,7 @@ const ChatBubbleMessage = React.forwardRef<
       <div
         className={cn(
           chatBubbleMessageVariants({ variant, layout, className }),
-          "w-full whitespace-pre-wrap"
+          "w-full whitespace-pre-wrap text-xs"
         )}
         ref={ref}
         {...props}
@@ -168,6 +168,7 @@ const ChatBubbleTimestamp: React.FC<ChatBubbleTimestampProps> = ({
 );
 
 // ChatBubbleAction
+//@ts-ignore
 type ChatBubbleActionProps = ButtonProps & {
   icon: React.ReactNode;
 };
