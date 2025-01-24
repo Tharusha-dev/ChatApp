@@ -200,7 +200,7 @@ export default function Home() {
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} socket={socket}/>
       <main className="flex-1 p-6 overflow-auto">
   
-          {activeTab === 'chat' && <ChatDashboard socketIn={socket} workerChatsIn={workerChats} bufferUsersIn={bufferUsers} refreshActiveChat={refreshActiveChat} newChatsIn={newChats} />}
+          {activeTab === 'chat' && <ChatDashboard socketIn={socket} workerChatsIn={workerChats} bufferUsersIn={bufferUsers} refreshActiveChat={refreshActiveChat} newChatsIn={newChats} setBufferUsers={setBufferUsers}/>}
       {isAdmin && (
         <>
           {activeTab === 'workers' && <Workers />}

@@ -111,8 +111,8 @@ const ChatInput = React.forwardRef<HTMLTextAreaElement, any>(
              <Paperclip size={18} />
             </button>
           </DialogTrigger>
-          <DialogContent className="max-w-full w-full">
-            <Dashboard width={"100%"} height={"300px"} uppy={uppy} />
+          <DialogContent className="w-[50%]">
+            <Dashboard width={"100%"} uppy={uppy} />
           </DialogContent>
         </Dialog>
 

@@ -40,24 +40,7 @@ export default function RequestsPopup({
 
   // Update the setBufferUsers usage to ensure uniqueness
   const handleAccept = (user: any) => {
-    // console.log("user", {
-    //   workerToken: workerToken,
-    //   webToken: user.userToken,
-    //   websiteDomain: user.websiteDomain,
-    //   chatId: user.chatId,
-    //   webName: user.webName,
-    //   initialMessage: user.initialMessage,
-    //   chat : [
-    //     {
-    //       msg : user.initialMessage,
-    //       timestamp : Date.now(),
-    //       sender : "web"
-    //     }
-    //   ],
-    //   metadata: user.metadata,
-    //   type: user.type,
-    //   webEmail: user.webEmail,
-    // });
+
     const newchats = addUniqueUser(workerChats,  {
       workerToken: workerToken,
       webToken: user.userToken,

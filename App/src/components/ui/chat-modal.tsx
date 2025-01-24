@@ -246,6 +246,21 @@ export default function ChatModal({
     setChat((prevChat) => [...prevChat, { msg, sender: "worker", timestamp }]);
   }
 
+  function prepareNameForIcon(name: string) {
+    if (!name) return ""; // Handle empty input
+    
+    const nameParts = name.trim().split(" ");
+    const firstLetter = nameParts[0].charAt(0).toUpperCase(); // Get the first letter
+    
+    if (nameParts.length === 1) {
+      // If there's only one word, return just the first letter
+      return firstLetter;
+    }
+    
+    const lastLetter = nameParts[nameParts.length - 1].charAt(0).toUpperCase(); // Get the last letter
+    return `${firstLetter}${lastLetter}`;
+  }
+
   const handleEditMessage = async (timestamp: number, newMessage: string) => {
     // Update the message in the chats array
     const payload = {
@@ -322,7 +337,7 @@ export default function ChatModal({
                   variant={message.sender === "web" ? "received" : "sent"}
                 >
                   <ChatBubbleAvatar
-                    fallback={message.sender === "web" ? chatData.webName : "You"}
+                    fallback={message.sender === "web" ? prepareNameForIcon(chatData.webName) : "You"}
                   />
                   <div className="relative group">
                     {(() => {
@@ -374,7 +389,7 @@ export default function ChatModal({
                             <ReplyAndEditBox
                               replyToMessage={{
                                 msg: originalMsg,
-                                user: message.sender === "web" ? chatData.webName : "Agent",
+                                user: message.sender === "web" ? "You" : chatData.webName,
                               }}
                               onCancel={() => {
                                 console.log("");

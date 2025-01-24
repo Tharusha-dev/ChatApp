@@ -986,7 +986,7 @@ const [replyingMessage, setReplyingMessage] = useState<{
                               time={formatDate(message.timestamp)}
                             >
                               <ReplyAndEditBox
-                                replyToMessage={{msg: originalMsg, user: message.sender === "web" ? "You" : "Agent"}}
+                                replyToMessage={{msg: originalMsg, user: message.sender === "web" ? "Agent" : "You"}}
                                
                                 onCancel={()=>{
                                   console.log('')

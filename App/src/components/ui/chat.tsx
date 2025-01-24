@@ -39,14 +39,16 @@ export default function ChatDashboard({
   bufferUsersIn,
   refreshActiveChat,
   newChatsIn,
+  setBufferUsers,
 }: {
   socketIn: Socket | null;
   workerChatsIn: any[];
   bufferUsersIn: any[];
   refreshActiveChat: boolean;
   newChatsIn: any[];
+  setBufferUsers: any;
 }) {
-  const [bufferUsers, setBufferUsers] = useState<any[]>([]);
+  // const [bufferUsers, setBufferUsers] = useState<any[]>([]);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [workerChats, setWorkerChats] = useState<any[]>([]);
   const [activeChat, setActiveChat] = useState<string | null>(null);
@@ -81,9 +83,9 @@ export default function ChatDashboard({
     setNewChats(newChatsIn);
   }, [newChatsIn]);
 
-  useEffect(() => {
-    setBufferUsers(bufferUsersIn);
-  }, [bufferUsersIn]);
+  // useEffect(() => {
+  //   setBufferUsers(bufferUsersIn);
+  // }, [bufferUsersIn]);
 
   useEffect(() => {
     if (socketIn) {
@@ -163,7 +165,7 @@ export default function ChatDashboard({
       <div className="top-bar w-full h-10  flex items-center justify-between mb-[1%]">
         {socket && (
           <RequestsPopup
-            bufferUsers={bufferUsers}
+            bufferUsers={bufferUsersIn}
             socket={socket}
             workerChats={workerChats}
             setWorkerChats={setWorkerChatsWithSort}
