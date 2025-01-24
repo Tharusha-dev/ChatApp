@@ -16,15 +16,24 @@ import {
 } from "@/components/ui/dialog";
 import { QRCodeSVG } from "qrcode.react";
 // import { socket } from "@/lib/socket"; // Assuming you have socket setup
-import {API_URL} from '@/lib/config'
+import { API_URL } from "@/lib/config";
 import SettingsDropdown from "./settings";
 import { WHATSAPP_CLIENTS } from "@/lib/config";
+import {
+  ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+  getPaginationRowModel,
+} from "@tanstack/react-table";
 
-export default function WhatsappManager({socket}: {socket: any}) {
+export default function WhatsappManager({ socket }: { socket: any }) {
   const [open, setOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [qrCode, setQrCode] = useState<string | null>(null);
-  const [status, setStatus] = useState<"idle" | "waiting" | "authenticated">("idle");
+  const [status, setStatus] = useState<"idle" | "waiting" | "authenticated">(
+    "idle"
+  );
 
   useEffect(() => {
     if (!open) {
@@ -36,7 +45,9 @@ export default function WhatsappManager({socket}: {socket: any}) {
     // Check authentication status
     const checkStatus = async () => {
       try {
-        const response = await fetch(`${API_URL}/whatsapp-status?id=${selectedClient}`);
+        const response = await fetch(
+          `${API_URL}/whatsapp-status?id=${selectedClient}`
+        );
         const data = await response.json();
         if (data.authenticated) {
           setStatus("authenticated");
@@ -82,33 +93,109 @@ export default function WhatsappManager({socket}: {socket: any}) {
     setOpen(true);
   };
 
+  const columns: ColumnDef<(typeof WHATSAPP_CLIENTS)[0]>[] = [
+    {
+      accessorKey: "id",
+      header: "Client ID",
+    },
+    {
+      accessorKey: "number",
+      header: "Number",
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }) => {
+        return (
+          <Button onClick={() => handleScanClick(row.original.id)}>
+            Scan QR Code
+          </Button>
+        );
+      },
+    },
+  ];
+
+  const table = useReactTable({
+    data: WHATSAPP_CLIENTS,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
   return (
-    <div className="container mx-auto py-10">
-       <div className="flex flex-col gap-2 items-end justify-end">
-       <SettingsDropdown />
-       </div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Client ID</TableHead>
-            <TableHead>Number</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {WHATSAPP_CLIENTS.map((client) => (
-            <TableRow key={client.id}>
-              <TableCell>{client.id}</TableCell>
-              <TableCell>{client.number}</TableCell>
-              <TableCell>
-                <Button onClick={() => handleScanClick(client.id)}>
-                  Scan QR Code
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">WhatsApp Manager</h2>
+
+        <div className="flex flex-col gap-2 items-end justify-end">
+          <SettingsDropdown />
+        </div>
+      </div>
+
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow key={row.id}>
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  No results.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <div className="flex items-center justify-end space-x-2 mt-4">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => table.previousPage()}
+          disabled={!table.getCanPreviousPage()}
+        >
+          Previous
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => table.nextPage()}
+          disabled={!table.getCanNextPage()}
+        >
+          Next
+        </Button>
+      </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">

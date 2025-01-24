@@ -6,16 +6,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { useStore } from "@/stores/store";
 import { Dialog, DialogContent, DialogTrigger } from "./dialog";
-import Uppy from '@uppy/core';
-import { Dashboard } from '@uppy/react';
-import { useUppyEvent } from '@uppy/react';
-import Tus from '@uppy/tus';
+import Uppy from "@uppy/core";
+import { Dashboard } from "@uppy/react";
+import { useUppyEvent } from "@uppy/react";
+import Tus from "@uppy/tus";
 
-import '@uppy/core/dist/style.min.css';
-import '@uppy/dashboard/dist/style.min.css';
+import "@uppy/core/dist/style.min.css";
+import "@uppy/dashboard/dist/style.min.css";
+import SettingsDropdown from "./settings";
 
 interface WebsiteMetadata {
   title: string;
@@ -29,19 +36,23 @@ export default function WebsiteData() {
   const { toast } = useToast();
 
   const websiteMetadata = useStore((state) => state.websiteMetadata);
-  const updateWebsiteMetadata = useStore((state) => state.updateWebsiteMetadata);
+  const updateWebsiteMetadata = useStore(
+    (state) => state.updateWebsiteMetadata
+  );
   const fetchWebsiteMetadata = useStore((state) => state.fetchWebsiteMetadata);
 
   // Initialize Uppy
-  const [uppy] = useState(() => new Uppy({
-    restrictions: {
-      allowedFileTypes: ['image/*'],
-      maxNumberOfFiles: 1
-    }
-  }).use(Tus, { endpoint: 'https://app.chatzu.ai/files/' }));
+  const [uppy] = useState(() =>
+    new Uppy({
+      restrictions: {
+        allowedFileTypes: ["image/*"],
+        maxNumberOfFiles: 1,
+      },
+    }).use(Tus, { endpoint: "https://app.chatzu.ai/files/" })
+  );
 
   // Handle successful file upload
-  useUppyEvent(uppy, 'upload-success', (file, response) => {
+  useUppyEvent(uppy, "upload-success", (file, response) => {
     const fileUrl = response.uploadURL;
     console.log(fileUrl);
     setFavicon(fileUrl as string);
@@ -69,7 +80,7 @@ export default function WebsiteData() {
     setIsUpdating(true);
 
     try {
-        console.log(title, favicon);
+      console.log(title, favicon);
       await updateWebsiteMetadata({
         title,
         favicon,
@@ -91,22 +102,27 @@ export default function WebsiteData() {
   };
 
   return (
-    <>
-   
+    <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8">
+        <h2 className="text-3xl font-bold mb-4 sm:mb-0">Website Metadata</h2>
+        <SettingsDropdown />
+      </div>
 
-      <div className="container mx-auto py-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Website Data</CardTitle>
-            <CardDescription>
-              Update your website's title and favicon. Changes will be applied globally for all users.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid gap-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="title" className="text-right">
+      <Card className="shadow-lg">
+        <CardHeader>
+          <CardDescription className="text-lg">
+            Update the website's title and favicon. Changes will be applied globally for all users.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="grid gap-6">
+              <div className="grid sm:grid-cols-4 items-center gap-4">
+                <Label htmlFor="title" className="text-right hidden sm:block">
+                  Website Title
+                </Label>
+                <div className="sm:col-span-3">
+                  <Label htmlFor="title" className="sm:hidden mb-2 block">
                     Website Title
                   </Label>
                   <Input
@@ -114,50 +130,51 @@ export default function WebsiteData() {
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="Enter website title"
-                    className="col-span-3"
+                    className="w-full"
                   />
                 </div>
+              </div>
 
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="favicon" className="text-right">
+              <div className="grid sm:grid-cols-4 items-start gap-4">
+                <Label htmlFor="favicon" className="text-right hidden sm:block pt-2">
+                  Favicon
+                </Label>
+                <div className="sm:col-span-3 space-y-4">
+                  <Label htmlFor="favicon" className="sm:hidden mb-2 block">
                     Favicon
                   </Label>
-                  <div className="col-span-3 space-y-2">
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" className="w-full">
-                          Upload Favicon
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-[850px] w-[800px]">
-                        <Dashboard uppy={uppy} />
-                      </DialogContent>
-                    </Dialog>
-                    {favicon && (
-                      <div className="flex items-center gap-2">
-                        <img 
-                          src={favicon} 
-                          alt="Favicon preview" 
-                          className="w-6 h-6 object-contain"
-                        />
-                        <span className="text-sm text-muted-foreground">
-                          Current favicon preview
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" className="w-full">
+                        Upload Favicon
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-[850px] w-[90vw] sm:w-[800px]">
+                      <Dashboard uppy={uppy} />
+                    </DialogContent>
+                  </Dialog>
+                  {favicon && (
+                    <div className="flex items-center gap-3 bg-muted p-3 rounded-md">
+                      <img
+                        src={favicon || "/placeholder.svg"}
+                        alt="Favicon preview"
+                        className="w-8 h-8 object-contain"
+                      />
+                      <span className="text-sm text-muted-foreground">Current favicon preview</span>
+                    </div>
+                  )}
                 </div>
               </div>
+            </div>
 
-              <div className="flex justify-end">
-                <Button type="submit" disabled={isUpdating}>
-                  {isUpdating ? "Updating..." : "Update Website Data"}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    </>
+            <div className="flex justify-end">
+              <Button type="submit" disabled={isUpdating} className="w-full sm:w-auto">
+                {isUpdating ? "Updating..." : "Update Website Data"}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

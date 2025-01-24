@@ -1,13 +1,13 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import MessageLoading from "./message-loading";
-import { Button, ButtonProps } from "../button";
+import { Button } from "../button";
 
 // ChatBubble
 const chatBubbleVariant = cva(
-  "flex gap-2 max-w-[60%] items-end relative group",
+  "flex gap-2 max-w-[80%] items-top relative group",
   {
     variants: {
       variant: {
@@ -16,14 +16,14 @@ const chatBubbleVariant = cva(
       },
       layout: {
         default: "",
-        ai: "max-w-full w-full items-center",
+        ai: "max-w-[80%] w-[80%] items-center",
       },
     },
     defaultVariants: {
       variant: "received",
       layout: "default",
     },
-  },
+  }
 );
 
 interface ChatBubbleProps
@@ -35,7 +35,7 @@ const ChatBubble = React.forwardRef<HTMLDivElement, ChatBubbleProps>(
     <div
       className={cn(
         chatBubbleVariant({ variant, layout, className }),
-        "relative group",
+        "relative group"
       )}
       ref={ref}
       {...props}
@@ -46,10 +46,10 @@ const ChatBubble = React.forwardRef<HTMLDivElement, ChatBubbleProps>(
               variant,
               layout,
             } as React.ComponentProps<typeof child.type>)
-          : child,
+          : child
       )}
     </div>
-  ),
+  )
 );
 ChatBubble.displayName = "ChatBubble";
 
@@ -72,16 +72,18 @@ const ChatBubbleAvatar: React.FC<ChatBubbleAvatarProps> = ({
 );
 
 // ChatBubbleMessage
-const chatBubbleMessageVariants = cva("p-4", {
+const chatBubbleMessageVariants = cva("p-3", {
   variants: {
     variant: {
       received:
-        "bg-secondary text-secondary-foreground rounded-r-lg rounded-tl-lg",
-      sent: "bg-primary text-primary-foreground rounded-l-lg rounded-tr-lg",
+        "bg-[#FAFAFA] border border-[#E9EAEB] text-[#181D27] rounded-r-lg rounded-bl-lg",
+      received2:
+        "bg-[#FAFAFA] border border-[#E9EAEB] text-[#181D27] rounded-lg",
+      sent: "bg-[#2970FF] text-white rounded-l-lg rounded-br-lg",
     },
     layout: {
       default: "",
-      ai: "border-t w-full rounded-none bg-transparent",
+      ai: "border-t w-full rounded-none bg-[#FAFAFA]",
     },
   },
   defaultVariants: {
@@ -94,6 +96,9 @@ interface ChatBubbleMessageProps
   extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof chatBubbleMessageVariants> {
   isLoading?: boolean;
+  isSender?: boolean;
+  user?: string;
+  time?: string;
 }
 
 const ChatBubbleMessage = React.forwardRef<
@@ -101,26 +106,48 @@ const ChatBubbleMessage = React.forwardRef<
   ChatBubbleMessageProps
 >(
   (
-    { className, variant, layout, isLoading = false, children, ...props },
-    ref,
+    {
+      className,
+      variant,
+      layout,
+      isLoading = false,
+      isSender = false,
+      user,
+      time,
+      children,
+      ...props
+    },
+    ref
   ) => (
-    <div
-      className={cn(
-        chatBubbleMessageVariants({ variant, layout, className }),
-        "break-words max-w-full whitespace-pre-wrap",
+    <div className="space-y-1">
+      {!isSender && (
+        <span className="text-xs text-[#414651] font-medium">
+          {isSender ? "" : user} • {time}
+        </span>
       )}
-      ref={ref}
-      {...props}
-    >
-      {isLoading ? (
-        <div className="flex items-center space-x-2">
-          <MessageLoading />
-        </div>
-      ) : (
-        children
+      {isSender && (
+        <span className="text-xs text-[#414651] font-medium text-right flex justify-end">
+          {time}
+        </span>
       )}
+      <div
+        className={cn(
+          chatBubbleMessageVariants({ variant, layout, className }),
+          "w-full whitespace-pre-wrap text-xs"
+        )}
+        ref={ref}
+        {...props}
+      >
+        {isLoading ? (
+          <div className="flex items-center space-x-2">
+            <MessageLoading />
+          </div>
+        ) : (
+          children
+        )}
+      </div>
     </div>
-  ),
+  )
 );
 ChatBubbleMessage.displayName = "ChatBubbleMessage";
 
@@ -141,6 +168,7 @@ const ChatBubbleTimestamp: React.FC<ChatBubbleTimestampProps> = ({
 );
 
 // ChatBubbleAction
+//@ts-ignore
 type ChatBubbleActionProps = ButtonProps & {
   icon: React.ReactNode;
 };
@@ -177,11 +205,11 @@ const ChatBubbleActionWrapper = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "absolute top-1/2 -translate-y-1/2 flex opacity-0 group-hover:opacity-100 transition-opacity duration-200",
+      "absolute -translate-y-1/2 flex opacity-0 group-hover:opacity-100 transition-opacity duration-200",
       variant === "sent"
-        ? "-left-1 -translate-x-full flex-row-reverse"
-        : "-right-1 translate-x-full",
-      className,
+        ? "-left-1 -translate-x-full top-8 flex-row-reverse"
+        : "-right-1 translate-x-full top-8",
+      className
     )}
     {...props}
   >

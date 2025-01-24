@@ -51,8 +51,8 @@
             }, 10);
         });
         
-        const widgetUrl = `http://localhost:3001/?websiteId=${websiteId}&currentUrl=${currentPageUrl}`;
-        
+        // const widgetUrl = `http://localhost:3001/?websiteId=${websiteId}&currentUrl=${currentPageUrl}`;
+        const widgetUrl = `https://chat.chatzu.ai/?websiteId=${websiteId}&currentUrl=${currentPageUrl}`;
         iframe.src = widgetUrl;
 
         // Create toggle button

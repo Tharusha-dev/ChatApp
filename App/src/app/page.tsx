@@ -105,15 +105,15 @@ export default function Home() {
 
     getData();
 
-    const socket = io(`${API_URL}`, {
-      transports: ['websocket'],
-      path: "/socket.io",
-      query: { type: "worker-connect-request", token: getCookie("userToken") },
-    });
-    // const socket = io("https://app.chatzu.ai", {
-    //   path: "/api/socket.io",
+    // const socket = io(`${API_URL}`, {
+    //   transports: ['websocket'],
+    //   path: "/socket.io",
     //   query: { type: "worker-connect-request", token: getCookie("userToken") },
     // });
+    const socket = io("https://app.chatzu.ai", {
+      path: "/api/socket.io",
+      query: { type: "worker-connect-request", token: getCookie("userToken") },
+    });
     
     setSocket(socket);
 
@@ -137,10 +137,10 @@ export default function Home() {
       }
     });
 
-    socket.on("qr", (data) => {
-      console.log("qr:", data);
-      handleChat(data);
-    });
+    // socket.on("qr", (data) => {
+    //   console.log("qr:", data);
+    //   // handleChat(data);
+    // });
 
     const showNotification = () => {
       if (!("Notification" in window)) {

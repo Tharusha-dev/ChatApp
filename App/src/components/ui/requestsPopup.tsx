@@ -91,7 +91,7 @@ export default function RequestsPopup({
     );
   };
 
-  console.log(bufferUsers);
+  // console.log(bufferUsers);
 
   // useEffect(() => {
   //   console.log("bufferUsers changed");
@@ -117,11 +117,14 @@ export default function RequestsPopup({
       <DialogContent>
         <ScrollArea className="h-[500px]">
         <DialogHeader>
-          <DialogTitle>Requests</DialogTitle>
+          <DialogTitle className="mb-[4%]">Requests</DialogTitle>
         </DialogHeader>
 
         {bufferUsers.map((user) => (
+          <div className="mb-5">
           <BufferCard user={user} onAccept={handleAccept} key={user.chatId} />
+
+          </div>
         ))}
         </ScrollArea>
       </DialogContent>

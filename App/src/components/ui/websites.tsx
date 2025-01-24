@@ -324,7 +324,7 @@ export default function Websites() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div>
+        <div className="flex flex-col gap-2">
           <h2 className="text-2xl font-bold">Websites</h2>
           <Input
             placeholder="Filter URLs..."

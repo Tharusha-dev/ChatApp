@@ -22,7 +22,7 @@ const mongoClient = new MongoClient(mongoUri);
 
 // const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
 const TELEGRAM_BOT_TOKEN = "7827757019:AAFNwWXkEEgOZjOwGJ5MoSUhngC-7VEW0dQ"
-const telegramBot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
+// const telegramBot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
 
 const db = mongoClient.db("chatapp-admin");
 
@@ -1833,158 +1833,158 @@ io.use((socket, next) => {
   });
 });
 
-telegramBot.on(
-  "message",
-  asyncHandler(async (msg) => {
-    const msgText = msg?.text;
-    const telegramChatId = msg.chat.id;
-    console.log("msg", msg);
-    console.log(msg);
-    if (msgText?.startsWith("/start")) {
-      console.log("start");
-      const mongoChatId = msgText.split(" ")?.[1];
+// telegramBot.on(
+//   "message",
+//   asyncHandler(async (msg) => {
+//     const msgText = msg?.text;
+//     const telegramChatId = msg.chat.id;
+//     console.log("msg", msg);
+//     console.log(msg);
+//     if (msgText?.startsWith("/start")) {
+//       console.log("start");
+//       const mongoChatId = msgText.split(" ")?.[1];
 
-      if (!mongoChatId) return;
-      // telegramInitiate(msg.chat.username, telegramChatId, mongoChatId);
+//       if (!mongoChatId) return;
+//       // telegramInitiate(msg.chat.username, telegramChatId, mongoChatId);
 
-      const chat = await chatsCollection.findOne({
-        _id: new ObjectId(mongoChatId),
-        }).catch((e)=>{
-          console.log(e);
-          return null;
-        });
-      if (!chat) return;
+//       const chat = await chatsCollection.findOne({
+//         _id: new ObjectId(mongoChatId),
+//         }).catch((e)=>{
+//           console.log(e);
+//           return null;
+//         });
+//       if (!chat) return;
     
-      console.log("========================");
-      console.log("/start chat monogoChatId", mongoChatId);
-      console.log("/start chat telegramChatId", telegramChatId);
-      console.log("========================");
+//       console.log("========================");
+//       console.log("/start chat monogoChatId", mongoChatId);
+//       console.log("/start chat telegramChatId", telegramChatId);
+//       console.log("========================");
 
-      await chatsCollection
-        .updateOne(
-          { _id: new ObjectId(mongoChatId) },
-          {
-            $set: {
-              telegramChatId: telegramChatId,
-              webEmail: msg.chat.username,
-              step: 0,
-              // webName: `${msg.chat.first_name} ${msg.chat.last_name}`,
-            },
-          }
-        )
-        .catch((err) => {
-          logger(`Database error while updating chat: ${err.message}`);
-          console.log({ status: 500, message: "Database error occurred" });
-        });
-      telegramBot.sendMessage(telegramChatId, "What is your name?");
-    } else {
-      console.log("non /start telegram chat");
+//       await chatsCollection
+//         .updateOne(
+//           { _id: new ObjectId(mongoChatId) },
+//           {
+//             $set: {
+//               telegramChatId: telegramChatId,
+//               webEmail: msg.chat.username,
+//               step: 0,
+//               // webName: `${msg.chat.first_name} ${msg.chat.last_name}`,
+//             },
+//           }
+//         )
+//         .catch((err) => {
+//           logger(`Database error while updating chat: ${err.message}`);
+//           console.log({ status: 500, message: "Database error occurred" });
+//         });
+//       telegramBot.sendMessage(telegramChatId, "What is your name?");
+//     } else {
+//       console.log("non /start telegram chat");
 
-      const chats = await chatsCollection
-        .find({ telegramChatId: telegramChatId })
-        .toArray();
+//       const chats = await chatsCollection
+//         .find({ telegramChatId: telegramChatId })
+//         .toArray();
 
-      if (!chats) return;
+//       if (!chats) return;
 
-      const chat = chats.reduce((latest, current) => {
-        // If we find a chat with empty chat array, return it immediately
-        if (current.chat.length === 0) {
-          return current;
-        }
+//       const chat = chats.reduce((latest, current) => {
+//         // If we find a chat with empty chat array, return it immediately
+//         if (current.chat.length === 0) {
+//           return current;
+//         }
 
-        // If latest is empty chat array, keep looking
-        if (latest.chat.length === 0) {
-          return current;
-        }
+//         // If latest is empty chat array, keep looking
+//         if (latest.chat.length === 0) {
+//           return current;
+//         }
 
-        // Compare timestamps of first messages
-        const currentTimestamp = current.chat[0]?.timestamp || 0;
-        const latestTimestamp = latest.chat[0]?.timestamp || 0;
+//         // Compare timestamps of first messages
+//         const currentTimestamp = current.chat[0]?.timestamp || 0;
+//         const latestTimestamp = latest.chat[0]?.timestamp || 0;
 
-        return currentTimestamp > latestTimestamp ? current : latest;
-      }, chats[0] || null);
+//         return currentTimestamp > latestTimestamp ? current : latest;
+//       }, chats[0] || null);
 
-      if (chat) {
-        // telegramBot.sendMessage(chatId, msgText);
+//       if (chat) {
+//         // telegramBot.sendMessage(chatId, msgText);
 
-        console.log("latest chat id =>", chat._id);
+//         console.log("latest chat id =>", chat._id);
 
-        if (chat.chat.length > 0) {
-          console.log("chat-msg continue conversation");
-          console.log("chat", chat);
-          //file_unique_id
-          if (msg?.photo) {
-            const photos = msg?.photo;
-            const biggestPhoto = photos[photos.length - 1];
-            const downloadURL = await getDownloadFilePath(biggestPhoto.file_id);
-            if (!downloadURL) return;
-            console.log("downloadURL", downloadURL);
-            const fileMsg = `[file][link="${downloadURL}"][name="${biggestPhoto.file_unique_id}"][type="image/png"][/file]`;
-            io.to(chat.userToken).emit("chat-msg", {
-              chatId: chat._id.toString(),
-              userToken: chat.userToken,
-              msg: { msg: fileMsg, timestamp: Date.now(), sender: "web" },
-            });
-            await addMsgToChat(
-              chat._id.toString(),
-              { msg: fileMsg, timestamp: Date.now(), sender: "web" },
-              "web"
-            );
-          } else if (msg?.document) {
-            // const photos = msg?.photo
-            const document = msg?.document;
-            const downloadURL = await getDownloadFilePath(document.file_id);
-            if (!downloadURL) return;
-            console.log("downloadURL", downloadURL);
-            const fileMsg = `[file][link="${downloadURL}"][name="${document.file_name}"][type="${document.mime_type}"][/file]`;
-            io.to(chat.userToken).emit("chat-msg", {
-              chatId: chat._id.toString(),
-              userToken: chat.userToken,
-              msg: { msg: fileMsg, timestamp: Date.now(), sender: "web" },
-            });
-            await addMsgToChat(
-              chat._id.toString(),
-              { msg: fileMsg, timestamp: Date.now(), sender: "web" },
-              "web"
-            );
-          } else {
-            io.to(chat.userToken).emit("chat-msg", {
-              chatId: chat._id.toString(),
-              userToken: chat.userToken,
-              msg: { msg: msgText, timestamp: Date.now(), sender: "web" },
-            });
+//         if (chat.chat.length > 0) {
+//           console.log("chat-msg continue conversation");
+//           console.log("chat", chat);
+//           //file_unique_id
+//           if (msg?.photo) {
+//             const photos = msg?.photo;
+//             const biggestPhoto = photos[photos.length - 1];
+//             const downloadURL = await getDownloadFilePath(biggestPhoto.file_id);
+//             if (!downloadURL) return;
+//             console.log("downloadURL", downloadURL);
+//             const fileMsg = `[file][link="${downloadURL}"][name="${biggestPhoto.file_unique_id}"][type="image/png"][/file]`;
+//             io.to(chat.userToken).emit("chat-msg", {
+//               chatId: chat._id.toString(),
+//               userToken: chat.userToken,
+//               msg: { msg: fileMsg, timestamp: Date.now(), sender: "web" },
+//             });
+//             await addMsgToChat(
+//               chat._id.toString(),
+//               { msg: fileMsg, timestamp: Date.now(), sender: "web" },
+//               "web"
+//             );
+//           } else if (msg?.document) {
+//             // const photos = msg?.photo
+//             const document = msg?.document;
+//             const downloadURL = await getDownloadFilePath(document.file_id);
+//             if (!downloadURL) return;
+//             console.log("downloadURL", downloadURL);
+//             const fileMsg = `[file][link="${downloadURL}"][name="${document.file_name}"][type="${document.mime_type}"][/file]`;
+//             io.to(chat.userToken).emit("chat-msg", {
+//               chatId: chat._id.toString(),
+//               userToken: chat.userToken,
+//               msg: { msg: fileMsg, timestamp: Date.now(), sender: "web" },
+//             });
+//             await addMsgToChat(
+//               chat._id.toString(),
+//               { msg: fileMsg, timestamp: Date.now(), sender: "web" },
+//               "web"
+//             );
+//           } else {
+//             io.to(chat.userToken).emit("chat-msg", {
+//               chatId: chat._id.toString(),
+//               userToken: chat.userToken,
+//               msg: { msg: msgText, timestamp: Date.now(), sender: "web" },
+//             });
 
-            await addMsgToChat(
-              chat._id.toString(),
-              { msg: msgText, timestamp: Date.now(), sender: "web" },
-              "web"
-            );
-          }
-        } else {
+//             await addMsgToChat(
+//               chat._id.toString(),
+//               { msg: msgText, timestamp: Date.now(), sender: "web" },
+//               "web"
+//             );
+//           }
+//         } else {
 
-          if(chat?.step === 0){
-            //get name
-            await chatsCollection.updateOne({_id: chat._id}, {$set: {step: 1, webName: msgText}})
-            telegramBot.sendMessage(telegramChatId, "What is your email?");
-          }else if(chat?.step === 1){
-            //get email
-            const website = await websitesCollection.findOne({
-              _id: new ObjectId(chat?.websiteId),
-            });
+//           if(chat?.step === 0){
+//             //get name
+//             await chatsCollection.updateOne({_id: chat._id}, {$set: {step: 1, webName: msgText}})
+//             telegramBot.sendMessage(telegramChatId, "What is your email?");
+//           }else if(chat?.step === 1){
+//             //get email
+//             const website = await websitesCollection.findOne({
+//               _id: new ObjectId(chat?.websiteId),
+//             });
       
-            await chatsCollection.updateOne({_id: chat._id}, {$set: {step: 2, userEmail: msgText}})
-            telegramBot.sendMessage(telegramChatId, website?.metadata?.msg_4);
-          }else if(chat?.step === 2){
-            //get initial req
-          telegramAddToBuffer(msg, telegramChatId, chat, msgText);
+//             await chatsCollection.updateOne({_id: chat._id}, {$set: {step: 2, userEmail: msgText}})
+//             telegramBot.sendMessage(telegramChatId, website?.metadata?.msg_4);
+//           }else if(chat?.step === 2){
+//             //get initial req
+//           telegramAddToBuffer(msg, telegramChatId, chat, msgText);
 
-          }
-          console.log("telegramAddToBuffer", chat._id.toString());
-        }
-      }
-    }
-  })
-);
+//           }
+//           console.log("telegramAddToBuffer", chat._id.toString());
+//         }
+//       }
+//     }
+//   })
+// );
 
 
 

@@ -23,7 +23,7 @@ export default function Sidebar({ activeTab, setActiveTab, socket }: SidebarProp
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              'flex items-center space-x-2 px-4 py-2 rounded-md text-left transition-colors',
+              'flex items-center space-x-2 px-4 py-2 rounded-md text-left transition-colors mb-[2%]',
               activeTab === tab.id
                 ? 'bg-blue-100 text-blue-600'
                 : 'text-gray-600 hover:bg-gray-100'
@@ -38,7 +38,7 @@ export default function Sidebar({ activeTab, setActiveTab, socket }: SidebarProp
             key="whatsapp"
             onClick={() => setActiveTab('whatsapp')}
             className={cn(
-              'flex items-center space-x-2 px-4 py-2 rounded-md text-left transition-colors',
+              'flex items-center space-x-2 px-4 py-2 rounded-md text-left transition-colors mb-[2%]',
               activeTab === 'whatsapp'
                 ? 'bg-blue-100 text-blue-600'
                 : 'text-gray-600 hover:bg-gray-100'
@@ -51,7 +51,7 @@ export default function Sidebar({ activeTab, setActiveTab, socket }: SidebarProp
             key="metadata"
             onClick={() => setActiveTab('metadata')}
             className={cn(
-              'flex items-center space-x-2 px-4 py-2 rounded-md text-left transition-colors',
+              'flex items-center space-x-2 px-4 py-2 rounded-md text-left transition-colors mb-[2%]',
               activeTab === 'metadata'
                 ? 'bg-blue-100 text-blue-600'
                 : 'text-gray-600 hover:bg-gray-100'

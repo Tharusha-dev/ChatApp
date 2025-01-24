@@ -27,7 +27,7 @@ import { useCallback, useEffect, useState, useRef } from "react";
 
 import { Input } from "@/components/ui/input";
 import { Suspense } from "react";
-import { Check, Copy, CornerDownLeft, Edit, Icon, RotateCcw, Trash } from "lucide-react";
+import { Check, Copy, CornerDownLeft, Edit, Icon, Reply, RotateCcw, Trash } from "lucide-react";
 //@ts-ignore
 import { FileIcon, defaultStyles } from "react-file-icon";
 
@@ -41,6 +41,7 @@ import { useUppyEvent } from "@uppy/react";
 import "@uppy/core/dist/style.min.css";
 import "@uppy/dashboard/dist/style.min.css";
 import Tus from "@uppy/tus";
+import { ReplyAndEditBox } from "@/components/ui/replyAndEditBox";
 
 export default function Home() {
   return (
@@ -123,8 +124,31 @@ function HomeContent() {
   }, [metadata]);
 
   const styledIcons = Object.keys(defaultStyles);
-  const actionAgentIcons = [
+  // const actionAgentIcons = [
 
+  //   {
+  //     icon: Copy,
+  //     type: "copy",
+  //   },
+  // ];
+
+
+  const actionUserIcons = [
+    {
+      icon: Edit,
+      type: "edit",
+    },
+    {
+      icon: Trash,
+      type: "delete",
+    },
+  ];
+
+  const actionAgentIcons = [
+    {
+      icon: Reply,
+      type: "reply",
+    },
     {
       icon: Copy,
       type: "copy",
@@ -210,6 +234,12 @@ function HomeContent() {
     timestamp: number;
     msg: string;
   } | null>(null);
+
+const [replyingMessage, setReplyingMessage] = useState<{
+  timestamp: number;
+  msg: string;
+} | null>(null);
+
   // dialog state
   const [open, setOpen] = useState(false);
 
@@ -245,6 +275,26 @@ function HomeContent() {
     );
     setEditingMessage(null);
   };
+
+  async function handleDeleteMessage(timestamp: number) {
+    // setChats((prevChats) =>
+    //   prevChats.filter((chat) => chat.timestamp !== timestamp)
+    // );
+
+    await handleEditMessage(timestamp, "[deleted]");
+  }
+
+
+  async function handleReplyMessage(newMessage: any, originalMessage: any) {
+    console.log("newMessage", newMessage);
+    console.log("originalMessage", originalMessage);
+    
+    const replyString = `[reply][originalMsg="${originalMessage}"][newMsg="${newMessage}"][/reply]`;
+    await sendChat("", replyString);
+    setReplyingMessage(null);
+    // sendChat(newMessage, originalMessage);
+    // setEditingMessage(newMessage);
+  }
 
   async function telegramJoin() {
     const res = await fetch(`${API_URL}/telegram/join`, {
@@ -385,7 +435,7 @@ function HomeContent() {
     // Clear timeout when component unmounts or when worker accepts
   }
 
-  function sendChat(fileUploadString: string = "") {
+  function sendChat(fileUploadString: string = "", replyToMessage: string = "") {
     if (!socket?.connected) {
       console.log("Socket not connected");
 
@@ -441,7 +491,7 @@ function HomeContent() {
     const payload = {
       userToken: token,
       msg: {
-        msg: fileUploadString ? fileUploadString : chatMsg,
+        msg: fileUploadString ? fileUploadString : replyToMessage ? replyToMessage : chatMsg,
         timestamp: Date.now(),
       },
       chatId,
@@ -760,9 +810,14 @@ function HomeContent() {
                   const whatsappRegex =
                     /^\[whatsapp\]\[link=(.+?)\]\[\/whatsapp\]$/;
 
+                    const replyRegex = /^\[reply\]\[originalMsg="(.+?)"\]\[newMsg="(.+?)"\]\[\/reply\]$/;
+
+                    const deleteRegex = /^\[deleted\]$/;
                   const fileMatch = message.msg.match(fileRegex);
                   const telegramMatch = message.msg.match(telegramRegex);
                   const whatsappMatch = message.msg.match(whatsappRegex);
+                  const replyMatch = message.msg.match(replyRegex);
+                  const deleteMatch = message.msg.match(deleteRegex);
 
                   console.log(message);
                   return (
@@ -917,7 +972,50 @@ function HomeContent() {
                                 </ChatBubbleMessage>
                               </div>
                             );
-                          } else {
+                          } 
+                          else if (replyMatch) {
+                            const [_, originalMsg, newMsg] = replyMatch;
+                            console.log("originalMsg", originalMsg);
+                            console.log("newMsg", newMsg);
+                            return (
+                              <ChatBubbleMessage
+                              variant={   message.sender === "web" ? "sent" : "received"}
+                              user={message.sender === "web" ? "you" : "Agent"}
+                              isSender={message.sender === "web"}
+                              className="border"
+                              time={formatDate(message.timestamp)}
+                            >
+                              <ReplyAndEditBox
+                                replyToMessage={{msg: originalMsg, user: message.sender === "web" ? "You" : "Agent"}}
+                               
+                                onCancel={()=>{
+                                  console.log('')
+                                }}
+                                type="reply"
+                                replayTo
+                                isSender={message.sender === "web"}
+                              />
+
+                              {newMsg}
+                              </ChatBubbleMessage>
+                            );
+                          }
+                          
+                          else if (deleteMatch) {
+                            return (
+                              <ChatBubbleMessage
+                                variant={
+                                  message.sender === "web" ? "sent" : "received"
+                                }
+                                isSender={message.sender === "web"}
+                                user={"Agent"}
+                                time={formatDate(message.timestamp)}
+                              >
+                               <span className="text-gray-200 italic">{message?.msg}</span>
+                              </ChatBubbleMessage>
+                            );
+                          }
+                          else {
                             return (
                               <ChatBubbleMessage
                                 variant={
@@ -971,8 +1069,12 @@ function HomeContent() {
                           {message?.sender == "worker" &&
                           !whatsappMatch &&
                           !telegramMatch &&
-                          !fileMatch && (
-                            actionAgentIcons.map(({ icon: Icon, type }) => (
+                          !fileMatch &&
+                          !deleteMatch &&
+                           (
+                            actionAgentIcons
+                            .filter(({ type }) => !(type === "reply" && replyMatch))
+                            .map(({ icon: Icon, type }) => (
                               <ChatBubbleAction
                                 className="size-7"
                                 key={type}
@@ -987,6 +1089,10 @@ function HomeContent() {
                                   if (type === "copy") {
                                     await handleCopyMessage(message.msg, message.timestamp);
                                   }
+                                  if (type === "reply") {
+                                    console.log("reply message", message);
+                                    setReplyingMessage(message);
+                                  }
                                 }}
                               />
                             ))
@@ -996,16 +1102,29 @@ function HomeContent() {
                         {message?.sender == "web" &&
                           !whatsappMatch &&
                           !telegramMatch &&
-                          !fileMatch && (
-                            <ChatBubbleAction
-                              className={`size-7`}
-                              key={"edit"}
-                              icon={<Edit className="size-4" />}
-                              onClick={() => {
-                                setEditingMessage(message);
-                                console.log("editingMessage:", message);
-                              }}
-                            />
+                          !fileMatch &&
+                          !deleteMatch &&
+                           (
+                            // <ChatBubbleAction
+                            //   className={`size-7`}
+                            //   key={"edit"}
+                            //   icon={<Edit className="size-4" />}
+                            //   onClick={() => {
+                            //     console.log("editingMessage:", message);
+                            //     setEditingMessage(message);
+                            //   }}
+                            // />
+                            actionUserIcons.map(({ icon: Icon, type }) => (
+                              <ChatBubbleAction
+                                className={`size-7`}
+                                key={type}
+                                icon={Icon && <Icon className="size-4" />}
+                                onClick={() => {
+                                  if (type === "edit") setEditingMessage(message);
+                                  if (type === "delete") handleDeleteMessage(message.timestamp);
+                                }}
+                              />
+                            ))
                           )}
                       </ChatBubbleActionWrapper>
                     </ChatBubble>
@@ -1040,7 +1159,10 @@ function HomeContent() {
             setChatMsg={setChatMsg}
             chatMsg={chatMsg}
             editingMessage={editingMessage}
+            replyingMessage={replyingMessage}
+            setReplyingMessage={setReplyingMessage}
             handleEditMessage={handleEditMessage}
+            handleReplyMessage={handleReplyMessage}
             setEditingMessage={setEditingMessage}
             sendDisabled={
               chatDisconnected ||

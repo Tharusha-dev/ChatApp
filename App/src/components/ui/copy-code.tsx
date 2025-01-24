@@ -16,7 +16,17 @@ export function CodeDialog({website}: {website: Website}) {
   const [copied, setCopied] = useState(false)
 
   const copyToClipboard = async () => {
-    const code = `<script src="https://chat.chatzu.ai/loader.js" website-id="${website._id}" icon-url="${website.chat_icon}"></script>`
+    // const code = `<script src="https://chat.chatzu.ai/loader.js?v2" website-id="${website._id}" icon-url="${website.chat_icon}"></script>`
+    
+    const code = `
+      <script> 
+var scr = document.createElement("script");
+scr.src = "https://chat.chatzu.ai/loader.js?v2" + "?ts=" + new Date().getTime();
+scr.setAttribute("website-id", "${website._id}");
+scr.setAttribute("icon-url", "${website.chat_icon}");
+document.getElementsByTagName("head")[0].appendChild(scr);
+</script>
+    `
     await navigator.clipboard.writeText(code)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
@@ -32,7 +42,7 @@ export function CodeDialog({website}: {website: Website}) {
       </DialogTrigger>
       <DialogContent className="sm:max-w-[550px] w-full">
         <DialogHeader className="flex flex-row items-center justify-between space-x-2">
-          <DialogTitle className="text-center flex-grow">Copy code and paste it into your website&apos;s head</DialogTitle>
+          <DialogTitle className="text-center flex-grow">Copy code and paste it into your websites head</DialogTitle>
           <Button 
             variant="ghost" 
             size="icon"
@@ -49,7 +59,13 @@ export function CodeDialog({website}: {website: Website}) {
         <div className="mt-4">
           <pre className="rounded-lg bg-muted p-4 overflow-x-auto whitespace-pre-wrap break-all">
             <code className="text-sm">
-              {`<script src="https://chat.chatzu.ai/loader.js" website-id="${website._id}" icon-url="${website.chat_icon}"></script>`}
+              {`<script> 
+var scr = document.createElement("script");
+scr.src = "https://chat.chatzu.ai/loader.js?v2" + "?ts=" + new Date().getTime();
+scr.setAttribute("website-id", "${website._id}");
+scr.setAttribute("icon-url", "${website.chat_icon}");
+document.getElementsByTagName("head")[0].appendChild(scr);
+</script>`}
             </code>
           </pre>
         </div>
