@@ -25,7 +25,13 @@ export function BufferCard({ user, onAccept }: UserCardProps) {
 
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp)
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    return date.toLocaleDateString([], { 
+      month: 'short', 
+      day: 'numeric' 
+    }) + ' ' + date.toLocaleTimeString([], { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    })
   }
 
   return (
@@ -37,7 +43,7 @@ export function BufferCard({ user, onAccept }: UserCardProps) {
               <AvatarImage src='/profile-default.svg' />
             </Avatar>
             <div>
-              <div className="flex items-center space-x-2">
+              <div className="flex space-x-2 w-full justify-start align-start items-start">
                 <h3 className="text-sm font-semibold">{user.webName}</h3>
                 <div className="flex items-center text-xs text-muted-foreground">
                   <Clock className="mr-1 h-3 w-3" />

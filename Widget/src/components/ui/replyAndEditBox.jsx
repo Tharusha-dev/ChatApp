@@ -8,6 +8,7 @@ export const ReplyAndEditBox = ({
   type,
   replayTo = false,
   isSender,
+  brandColor,
 }) => {
   console.log("replyToMessage test", replyToMessage);
   return (
@@ -15,10 +16,11 @@ export const ReplyAndEditBox = ({
       className={`border-l-4 flex  justify-between ${
         replayTo
           ? `border-[#D5D7DA]  ${
-              !isSender ? "bg-[#F5F5F5]" : "bg-[#528BFF]"
+              !isSender ? "bg-[#F5F5F5]" : `bg-[${brandColor}]`
             } mb-2`
-          : "border-[#2970FF]"
+          : `border-[${brandColor}]`
       } p-2 rounded`}
+      style={{backgroundColor: brandColor}}
     >
       <div className="flex flex-col">
         <div

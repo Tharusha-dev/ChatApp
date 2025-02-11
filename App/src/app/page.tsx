@@ -28,7 +28,7 @@ export default function Home() {
   const initializeStore = useStore((state) => state.initializeStore);
 
   useEffect(() => {
-    const token = getCookie('userToken');
+    const token = getCookie('chatzu-userToken');
     console.log("check this")
     console.log(token);
     if(!token || token === '' || token === 'undefined') router.push('/login');
@@ -36,13 +36,13 @@ export default function Home() {
     async function init(){
       const isAdminRes = await fetch(`${API_URL}/worker/isAdmin`, {
         headers: {
-          auth: getCookie("userToken") as string,
+          auth: getCookie("chatzu-userToken") as string,
         },
       });
       const isAdminData = await isAdminRes.json();
       setIsAdmin(isAdminData?.isAdmin);
       if(isAdminData?.relogin){
-        deleteCookie('userToken');
+        deleteCookie('chatzu-userToken');
         router.push('/login');
       }
     }
@@ -77,7 +77,7 @@ export default function Home() {
 
       const chatsRes = await fetch(`${API_URL}/worker/get-chats`, {
         headers: {
-          auth: getCookie("userToken") as string,
+          auth: getCookie("chatzu-userToken") as string,
         },
       });
 
@@ -92,7 +92,7 @@ export default function Home() {
 
     const buffer = await fetch(`${API_URL}/worker/get-buffer`, {
       headers: {
-        auth: getCookie("userToken") as string,
+        auth: getCookie("chatzu-userToken") as string,
       },
     });
 
@@ -108,11 +108,11 @@ export default function Home() {
     // const socket = io(`${API_URL}`, {
     //   transports: ['websocket'],
     //   path: "/socket.io",
-    //   query: { type: "worker-connect-request", token: getCookie("userToken") },
+    //   query: { type: "worker-connect-request", token: getCookie("chatzu-userToken") },
     // });
     const socket = io("https://app.chatzu.ai", {
       path: "/api/socket.io",
-      query: { type: "worker-connect-request", token: getCookie("userToken") },
+      query: { type: "worker-connect-request", token: getCookie("chatzu-userToken") },
     });
     
     setSocket(socket);
@@ -170,12 +170,12 @@ export default function Home() {
       try {
         const responseWorkers = await fetch(`${API_URL}/admin/get-workers`, {
           headers: {
-            auth: getCookie("userToken") as string,
+            auth: getCookie("chatzu-userToken") as string,
           },
         }); // Replace with your API route
         const responseWebsites = await fetch(`${API_URL}/admin/get-websites`, {
           headers: {
-            auth: getCookie("userToken") as string,
+            auth: getCookie("chatzu-userToken") as string,
           },
         }); // Replace with your API route
         const workers = await responseWorkers.json();

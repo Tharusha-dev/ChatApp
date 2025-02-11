@@ -2,25 +2,29 @@
     
     const script = document.currentScript;
 
-    const loadWidget = () => {
+    const loadWidget = async () => {
         
         const widget= document.createElement("div");
 
         const websiteId = script.getAttribute("website-id");
-        const iconUrl = script.getAttribute("icon-url");
+
+        const res = await fetch(`http://localhost:8000/web/data?websiteId=${websiteId}`);
+        const data = await res.json();
+        const iconUrl = data.icon;
+        const color = data.color;
+        // const iconUrl = script.getAttribute("icon-url");
         const currentPageUrl = encodeURIComponent(window.location.href);
     
         const widgetStyle = widget.style;
         widgetStyle.display = "none";
         widgetStyle.boxSizing = "border-box";
         widgetStyle.width = "85%";
-        widgetStyle.maxWidth = "400px";
+        widgetStyle.maxWidth = "385px";
         widgetStyle.height = "50vh";
-        // widgetStyle.bottom = "100px";
         widgetStyle.maxHeight = "647px";
         widgetStyle.position = "fixed";
-        widgetStyle.bottom = "9%";
-        widgetStyle.right = "20px";
+        widgetStyle.bottom = "85px";
+        widgetStyle.right = "24px";
         widgetStyle.zIndex = "999998";
         widgetStyle.transition = "all 0.3s ease-in-out";
         widgetStyle.opacity = "0";
@@ -36,7 +40,7 @@
         iframeStyle.width = "100%";
         iframeStyle.height = "100%";
         iframeStyle.border = "1px solid hsl(240, 5.9%, 90%)";
-        iframeStyle.borderRadius = "12px";
+        iframeStyle.borderRadius = "0.5rem";
         iframeStyle.boxShadow = "0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -2px rgba(0,0,0,.1)";
         iframeStyle.margin = 0;
         iframeStyle.padding = 0;
@@ -44,15 +48,16 @@
         widget.appendChild(iframe);
         
         iframe.addEventListener("load", () => {
-            widget.style.display = "block";
-            setTimeout(() => {
-                widget.style.opacity = "1";
-                widget.style.transform = "translateY(0)";
-            }, 10);
+            // Remove the automatic display on load
+            // widget.style.display = "block";
+            // setTimeout(() => {
+            //     widget.style.opacity = "1";
+            //     widget.style.transform = "translateY(0)";
+            // }, 10);
         });
         
-        // const widgetUrl = `http://localhost:3001/?websiteId=${websiteId}&currentUrl=${currentPageUrl}`;
-        const widgetUrl = `https://chat.chatzu.ai/?websiteId=${websiteId}&currentUrl=${currentPageUrl}`;
+        const widgetUrl = `http://localhost:3001/?websiteId=${websiteId}&currentUrl=${currentPageUrl}`;
+        // const widgetUrl = `https://chat.chatzu.ai/?websiteId=${websiteId}&currentUrl=${currentPageUrl}`;
         iframe.src = widgetUrl;
 
         // Create toggle button
@@ -69,17 +74,17 @@
         buttonStyle.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
         buttonStyle.zIndex = "999999";
         buttonStyle.padding = "14px";
-        buttonStyle.backgroundColor = "#0066FF";
+        buttonStyle.backgroundColor = color;
         buttonStyle.transition = "all 0.2s ease-in-out";
 
         // Add hover effect
         toggleButton.addEventListener("mouseover", () => {
-            buttonStyle.backgroundColor = "#0052CC"; // Darker shade of the original #0066FF
+            buttonStyle.backgroundColor = color; // Darker shade of the original #0066FF
             buttonStyle.boxShadow = "0 6px 16px rgba(0,0,0,0.2)";
         });
 
         toggleButton.addEventListener("mouseout", () => {
-            buttonStyle.backgroundColor = "#0066FF"; // Return to original color
+            buttonStyle.backgroundColor = color; // Return to original color
             buttonStyle.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
         });
 
@@ -96,9 +101,9 @@
         const adjustWidgetForMobile = (e) => {
             if (e.matches) {
                 // Mobile styles
-                widgetStyle.width = "100%";
+                widgetStyle.width = "100vw";
                 widgetStyle.height = "100%";
-                widgetStyle.maxWidth = "100%";
+                widgetStyle.maxWidth = "100vw";
                 widgetStyle.maxHeight = "100%";
                 widgetStyle.bottom = "0";
                 widgetStyle.right = "0";
@@ -153,15 +158,22 @@
                 widget.style.transform = "translateY(20px)";
                 toggleButton.src = iconUrl;
                 closeButton.style.display = "none";
-                toggleButton.style.display = "block"; // Show toggle button when closing
+                // Only show toggle button when closing if not on mobile
+                if (!mediaQuery.matches) {
+                    toggleButton.style.display = "block";
+                }
                 setTimeout(() => {
-                    widget.style.display = "none";
+                    widget.style.display = "hidden";
+                    // Show toggle button after animation on mobile
+                    if (mediaQuery.matches) {
+                        toggleButton.style.display = "block";
+                    }
                 }, 300);
             } else {
                 widget.style.display = "block";
                 toggleButton.src = downArrowSvg;
                 closeButton.style.display = "block";
-                if (mediaQuery.matches) { // Hide toggle button on mobile when opening
+                if (mediaQuery.matches) {
                     toggleButton.style.display = "none";
                 }
                 setTimeout(() => {
@@ -177,9 +189,16 @@
             widget.style.transform = "translateY(20px)";
             toggleButton.src = iconUrl;
             closeButton.style.display = "none";
-            toggleButton.style.display = "block"; // Show toggle button when closing
+            // Don't show toggle button immediately on mobile
+            if (!mediaQuery.matches) {
+                toggleButton.style.display = "block";
+            }
             setTimeout(() => {
-                widget.style.display = "none";
+                widget.style.display = "hidden";
+                // Show toggle button after animation on mobile
+                if (mediaQuery.matches) {
+                    toggleButton.style.display = "block";
+                }
             }, 300);
         });
 

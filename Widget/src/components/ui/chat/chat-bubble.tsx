@@ -28,7 +28,9 @@ const chatBubbleVariant = cva(
 
 interface ChatBubbleProps
   extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof chatBubbleVariant> {}
+    VariantProps<typeof chatBubbleVariant> {
+
+}
 
 const ChatBubble = React.forwardRef<HTMLDivElement, ChatBubbleProps>(
   ({ className, variant, layout, children, ...props }, ref) => (
@@ -79,7 +81,7 @@ const chatBubbleMessageVariants = cva("p-3", {
         "bg-[#FAFAFA] border border-[#E9EAEB] text-[#181D27] rounded-r-lg rounded-bl-lg",
       received2:
         "bg-[#FAFAFA] border border-[#E9EAEB] text-[#181D27] rounded-lg",
-      sent: "bg-[#2970FF] text-white rounded-l-lg rounded-br-lg",
+      sent: "text-white rounded-l-lg rounded-br-lg",
     },
     layout: {
       default: "",
@@ -99,6 +101,7 @@ interface ChatBubbleMessageProps
   isSender?: boolean;
   user?: string;
   time?: string;
+  brandColor?: string;
 }
 
 const ChatBubbleMessage = React.forwardRef<
@@ -112,6 +115,7 @@ const ChatBubbleMessage = React.forwardRef<
       layout,
       isLoading = false,
       isSender = false,
+      brandColor = "#000000",
       user,
       time,
       children,
@@ -133,8 +137,10 @@ const ChatBubbleMessage = React.forwardRef<
       <div
         className={cn(
           chatBubbleMessageVariants({ variant, layout, className }),
-          "w-full whitespace-pre-wrap text-xs"
+          "w-full whitespace-pre-wrap text-xs",
+          variant === "sent" && `bg-[${brandColor}]`
         )}
+        style={variant === "sent" ? { backgroundColor: brandColor} : undefined}
         ref={ref}
         {...props}
       >

@@ -218,7 +218,7 @@ export default function ChatModal({
 
     // console.log(data, socket, chatData);
 
-    if (data.reconnect && socket && chatData.type != "web") {
+    if (data.reconnect && socket) {
       console.log("reconnecting");
       // return;
 

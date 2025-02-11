@@ -13,7 +13,7 @@ import { getCookie, hasCookie } from "cookies-next/client";
 
   
 export default function RequestsPopup({bufferUsers, socket, setWorkerChats, setBufferUsers}: {bufferUsers: any[], socket: Socket, setWorkerChats: any, setBufferUsers: any}) {
-    const workerToken = getCookie("userToken");
+    const workerToken = getCookie("chatzu-userToken");
     console.log("re-rendering");
     console.log(bufferUsers);
     return <Dialog>

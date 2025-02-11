@@ -25,7 +25,7 @@ export default function Login() {
   const router = useRouter();
 
   useEffect(() => {
-    if (hasCookie("userToken") && getCookie("userToken") !== 'undefined') {
+    if (hasCookie("chatzu-userToken") && getCookie("chatzu-userToken") !== 'undefined') {
       router.push("/");
     }
   }, []);
@@ -51,7 +51,7 @@ export default function Login() {
       }
       
       const data = await res.json();
-      setCookie("userToken", data.token);
+      setCookie("chatzu-userToken", data.token);
       router.push("/");
     } catch (error) {
       console.error(error);

@@ -4,7 +4,7 @@ import { create } from 'zustand';
 import { Worker, Website } from '@/types/types';
 import { getCookie } from 'cookies-next';
 
-const token = getCookie("userToken") as string;
+const token = getCookie("chatzu-userToken") as string;
 
 interface WebsiteMetadata {
   title: string;

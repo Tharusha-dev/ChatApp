@@ -97,7 +97,7 @@ const [socket, setSocket] = useState<Socket | null>(null);
       // Add cleanup return function
       return () => {
         socket.disconnect();
-      };
+      };1
     }
   }, [socket]);
   
@@ -117,8 +117,8 @@ const [socket, setSocket] = useState<Socket | null>(null);
 
   
 var scr = document.createElement("script");
-scr.src = "https://chat.chatzu.ai/loader.js?v2" + "?ts=" + new Date().getTime();
-scr.setAttribute("website-id", "678ec6a24d3021b8eca6c708");
+scr.src = "./loader.js?v2" + "?ts=" + new Date().getTime();
+scr.setAttribute("website-id", "6767dc57db29917c2b71c8ce");
 scr.setAttribute("icon-url", "https://www.svgrepo.com/show/529475/chat-square.svg");
 document.getElementsByTagName("head")[0].appendChild(scr);
 

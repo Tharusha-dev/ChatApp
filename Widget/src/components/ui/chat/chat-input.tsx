@@ -28,6 +28,7 @@ const ChatInput = React.forwardRef<HTMLTextAreaElement, any>(
       handleReplyMessage,
       sendDisabled,
       handleEditMessage,
+      brandColor,
       ...props
     },
     ref
@@ -76,6 +77,7 @@ const ChatInput = React.forwardRef<HTMLTextAreaElement, any>(
     <div className="relative flex flex-col w-full gap-2 z-1">
       {editingMessage && (
         <ReplyAndEditBox
+          brandColor={brandColor}
           isSender={false}
           type={"edit"}
           replyToMessage={{...editingMessage, msg: extractedMessages?.newMsg ? extractedMessages?.newMsg : editingMessage.msg}}
@@ -89,6 +91,7 @@ const ChatInput = React.forwardRef<HTMLTextAreaElement, any>(
 
 {replyingMessage && (
         <ReplyAndEditBox
+          brandColor={brandColor}
           isSender={false}
           type={"edit"}
           replyToMessage={replyingMessage}

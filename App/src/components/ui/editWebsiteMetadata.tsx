@@ -15,7 +15,7 @@ import { useState } from "react";
 import { Website } from "@/types/types";
 import { ChatIconDropdown } from "./chatIconDropdown";
 import { Checkbox } from "@/components/ui/checkbox";
-
+import { HexColorPicker } from "react-colorful";
 
 export function EditWebsiteMetadata({ website }: { website: Website }) {
   const [title, setTitle] = useState(website.metadata.title);
@@ -27,6 +27,7 @@ export function EditWebsiteMetadata({ website }: { website: Website }) {
   const [allow_telegram, setAllow_telegram] = useState(website.metadata.allow_telegram);
   const [allow_whatsapp, setAllow_whatsapp] = useState(website.metadata.allow_whatsapp);
   const [chat_icon, setChatIcon] = useState(website.chat_icon);
+  const [color, setColor] = useState(website.metadata.brand_color);
 
   const updateWebsite = useStore((state) => state.updateWebsite);
 
@@ -34,10 +35,13 @@ export function EditWebsiteMetadata({ website }: { website: Website }) {
     updateWebsite(website._id, "metadata", {
       title,
       description,
-      msg_1,
+     msg_1 :  "Welcome to support. How do you want to contact us? Whatsapp, Telegram, Live chat.",
       msg_2,
       msg_3,
       msg_4,
+      allow_telegram,
+      allow_whatsapp,
+      brand_color: color,
     });
     updateWebsite(website._id, "chat_icon", chat_icon);
   }
@@ -79,9 +83,10 @@ export function EditWebsiteMetadata({ website }: { website: Website }) {
             </Label>
             <Input
               id="msg_1"
+              // disabled = {true}
               value={msg_1}
               className="col-span-3"
-              onChange={(e) => setMsg_1(e.target.value)}
+              // onChange={(e) => setMsg_1(e.target.value)}
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
@@ -149,6 +154,19 @@ export function EditWebsiteMetadata({ website }: { website: Website }) {
             </Label>
             <ChatIconDropdown onSelect={(url)=>{setChatIcon(url)}} selectedIcon={website.chat_icon} /> 
         
+          </div>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="chat_icon" className="text-right">
+              Brand color
+            </Label>
+            <div className="col-span-2 flex items-center gap-4">
+              <HexColorPicker color={color} onChange={setColor} style={{width: "10rem", height: "10rem"}}/>
+              <div 
+                style={{backgroundColor: color}} 
+                className="w-10 h-10 rounded-sm shadow-md border border-gray-200"
+              />
+            </div>
           </div>
 
         </div>

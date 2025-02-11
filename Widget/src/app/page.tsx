@@ -90,6 +90,9 @@ function HomeContent() {
   const [workerConnected, setWorkerConnected] = useState<boolean>(false);
   const [copiedMessageId, setCopiedMessageId] = useState(null);
 
+  const [agentName, setAgentName] = useState("Agent")
+  const [brandColor, setBrandColor] = useState("#000000")
+
   const [currentChatMethod, setCurrentChatMethod] = useState<
     null | "select" | "chat" | "telegram" | "whatsapp"
   >(null);
@@ -297,12 +300,20 @@ const [replyingMessage, setReplyingMessage] = useState<{
   }
 
   async function telegramJoin() {
+    const ipres = await fetch("https://ipinfo.io/json")
+    const ipdata = await ipres.json()
+    const ip = ipdata.ip
+    // const country = ipdata.country
+    // const city = ipdata.city
+    // const region = ipdata.region
+    // const org = ipdata.org
+
     const res = await fetch(`${API_URL}/telegram/join`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ websiteId, currentUrl }),
+      body: JSON.stringify({ websiteId, currentUrl, ip }),
     });
 
     const data = await res.json();
@@ -312,12 +323,19 @@ const [replyingMessage, setReplyingMessage] = useState<{
   }
 
   async function whatsappJoin() {
+    const ipres = await fetch("https://ipinfo.io/json")
+    const ipdata = await ipres.json()
+    const ip = ipdata.ip
+    // const country = ipdata.country
+    // const city = ipdata.city
+    // const region = ipdata.region
+    // const org = ipdata.org
     const res = await fetch(`${API_URL}/whatsapp/join`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ websiteId, currentUrl }),
+      body: JSON.stringify({ websiteId, currentUrl, ip }),
     });
 
     const data = await res.json();
@@ -328,6 +346,15 @@ const [replyingMessage, setReplyingMessage] = useState<{
 
   async function join(initialMessage: string) {
     console.log("login");
+
+    const ipres = await fetch("https://ipinfo.io/json")
+    const ipdata = await ipres.json()
+    const ip = ipdata.ip
+    // const country = ipdata.country
+    // const city = ipdata.city
+    // const region = ipdata.region
+    // const org = ipdata.org
+
     const res = await fetch(`${API_URL}/web/join`, {
       method: "POST",
       headers: {
@@ -342,18 +369,18 @@ const [replyingMessage, setReplyingMessage] = useState<{
         email: email,
         websiteId: websiteId,
         currentUrl: currentUrl,
+        ip
       }),
     });
     const data = await res.json();
     setToken(data.userToken);
     setChatId(data.chatId);
-
+    const newSocket = io("https://app.chatzu.ai", {
+      path: "/api/socket.io",
+query: {
     // const newSocket = io(`${API_URL}`, {
     //   path: "/socket.io",
     //   query: {
-            const newSocket = io("https://app.chatzu.ai", {
-              path: "/api/socket.io",
-        query: {
         type: "web-chat-request",
         name: name,
         userToken: data.userToken,
@@ -366,6 +393,11 @@ const [replyingMessage, setReplyingMessage] = useState<{
       },
       transports: ["websocket"],
       reconnection: true,
+      // pingTimeout: 60000,
+      // pingInterval: 25000,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
     });
 
     newSocket.on("connect", () => {
@@ -432,9 +464,37 @@ const [replyingMessage, setReplyingMessage] = useState<{
       }
     }, 20 * 60 * 1000); // 20 minutes in milliseconds
 
+    // Add reconnection event handlers
+    newSocket.on("reconnect_attempt", (attemptNumber) => {
+      console.log(`Attempting to reconnect: ${attemptNumber}`);
+    });
+
+    newSocket.on("reconnect", (attemptNumber) => {
+      console.log(`Reconnected after ${attemptNumber} attempts`);
+      // Re-join rooms and re-establish state if needed
+      if (token && chatId) {
+        newSocket.emit("web-reconnect", {
+          webToken: token,
+          // chatId: chatId
+        });
+      }
+    });
+
+    newSocket.on("reconnect_error", (error) => {
+      console.log("Reconnection error:", error);
+    });
+
+    newSocket.on("reconnect_failed", () => {
+      console.log("Failed to reconnect");
+      setChatDisconnected(true);
+    });
+
     // Clear timeout when component unmounts or when worker accepts
   }
 
+  // Add new state for loading
+  const [isLoading, setIsLoading] = useState(false);
+  const [icon,setIcon] = useState<string | null>(null);
   function sendChat(fileUploadString: string = "", replyToMessage: string = "") {
     if (!socket?.connected) {
       console.log("Socket not connected");
@@ -496,7 +556,10 @@ const [replyingMessage, setReplyingMessage] = useState<{
       },
       chatId,
     };
-    console.log("Sending payload:", payload);
+    
+    // Show loading state for 2 seconds
+    setIsLoading(true);
+    setTimeout(() => setIsLoading(false), 2000);
 
     // socket.current.emit("chat-msg", payload);
     // socket.current.emit("worker-buffer-accept", payload);
@@ -617,16 +680,17 @@ const [replyingMessage, setReplyingMessage] = useState<{
 
   useEffect(() => {
     async function getMetadata() {
-      const res = await fetch(`${API_URL}/web/get-metadata`, {
-        method: "POST",
+      const res = await fetch(`${API_URL}/web/data?websiteId=${websiteId}`, {
+        method: "GET",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ websiteId }),
+        // body: JSON.stringify({ websiteId }),
       });
       const data = await res.json();
-      setMetadata(data);
-      initialChatSequence("", data?.msg_1);
+      setMetadata(data?.metadata);
+      setIcon(data?.icon);
+      initialChatSequence("", data?.metadata?.msg_1);
     }
 
     getMetadata();
@@ -721,6 +785,7 @@ const [replyingMessage, setReplyingMessage] = useState<{
         console.log("worker-buffer-accept:", data);
         setStatusMsg(null);
         setWorkerConnected(true);
+        setAgentName(data?.workerName);
         // setWaitingForWorker(false);
         waitingForWorker.current = false;
         console.log("worker is available");
@@ -736,14 +801,91 @@ const [replyingMessage, setReplyingMessage] = useState<{
         console.log("Event received:", eventName, args);
       });
 
-      socket.on("party-disconnected", (data) => {
-        console.log("party disconnected:", data);
+      // socket.on("party-disconnected", (data) => {
+      //   console.log("party disconnected:", data);
+      //   setChatDisconnected(true);
+      //   // if(data.party === "web"){
+      //   //   setActiveChat(null);
+      //   // }
+      // });
+
+
+      socket.on("reconnect_attempt", (attemptNumber) => {
+        console.log(`Attempting to reconnect: ${attemptNumber}`);
+      });
+  
+      socket.on("reconnect", (attemptNumber) => {
+        console.log(`Reconnected after ${attemptNumber} attempts`);
+        // Re-join rooms and re-establish state if needed
+        if (token && chatId) {
+          socket.emit("web-reconnect", {
+            webToken: token,
+            // chatId: chatId
+          });
+        }
+      });
+  
+      socket.on("reconnect_error", (error) => {
+        console.log("Reconnection error:", error);
+      });
+  
+      socket.on("reconnect_failed", () => {
+        console.log("Failed to reconnect");
         setChatDisconnected(true);
-        // if(data.party === "web"){
-        //   setActiveChat(null);
-        // }
       });
     }
+  }, [socket]);
+
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (document.hidden) {
+        // Tab is hidden
+        console.log("Tab hidden - keeping socket alive");
+        // Optionally reduce ping frequency when hidden
+        // if (socket) {
+        //   socket.io.opts.pingInterval = 30000; // 30 seconds
+        //   socket.io.opts.pingTimeout = 90000; // 90 seconds
+        // }
+      } else {
+        // Tab is visible again
+        console.log("Tab visible - normalizing socket settings");
+        if (socket) {
+          // socket.io.opts.pingInterval = 25000; // 25 seconds
+          // socket.io.opts.pingTimeout = 60000; // 60 seconds
+          
+          // If socket was disconnected, attempt to reconnect
+          if (!socket.connected) {
+            socket.connect();
+          }
+        }
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [socket]);
+
+  useEffect(() => {
+    let heartbeat: NodeJS.Timeout;
+
+    if (socket?.connected) {
+      // Send a heartbeat every 30 seconds
+      heartbeat = setInterval(() => {
+        if (socket.connected) {
+          console.log("sending heartbeat");
+          socket.emit("heartbeat");
+        }
+      }, 30000);
+    }
+
+    return () => {
+      if (heartbeat) {
+        clearInterval(heartbeat);
+      }
+    };
   }, [socket]);
 
   return (
@@ -753,7 +895,7 @@ const [replyingMessage, setReplyingMessage] = useState<{
           <>
             <Image
               aria-hidden
-              src="/livechatColor.svg"
+              src={icon || "/livechatColor.svg"}
               alt="File icon"
               width={20}
               height={20}
@@ -764,11 +906,12 @@ const [replyingMessage, setReplyingMessage] = useState<{
             </div>
           </>
         </ExpandableChatHeader>
-        {workerConnected && (
+
           <div className="flex bg-white w-full py-2 px-4 justify-center items-center gap-2">
             <Button
               size="sm"
-              className="w-full bg-[#2970FF] text-white hover:bg-[#2C7DFF]"
+              className={`w-full  text-white hover:bg-[${metadata?.brand_color}]`}
+              style={{backgroundColor: metadata?.brand_color}}
               onClick={async () => {
                 // First reset all states except socket-related ones
                 setAction("restart");
@@ -791,7 +934,7 @@ const [replyingMessage, setReplyingMessage] = useState<{
               End Chat
             </Button>
           </div>
-        )}
+        
 
         <ExpandableChatBody className="border-b-0">
           <ChatMessageList className="border-b-0">
@@ -827,7 +970,7 @@ const [replyingMessage, setReplyingMessage] = useState<{
                       className="text-xs"
                     >
                       {message.sender != "web" && (
-                        <ChatBubbleAvatar fallback="A" />
+                        <ChatBubbleAvatar fallback={agentName?.[0]} />
                       )}
                       <div className="relative group">
                         {(() => {
@@ -839,8 +982,9 @@ const [replyingMessage, setReplyingMessage] = useState<{
                                 variant={
                                   message.sender === "web" ? "sent" : "received"
                                 }
+                                brandColor={metadata?.brand_color}
                                 isSender={message.sender === "web"}
-                                user={"Agent"}
+                                user={agentName}
                                 time={formatDate(message.timestamp)}
                               >
                                 <div
@@ -871,7 +1015,7 @@ const [replyingMessage, setReplyingMessage] = useState<{
                             const [_, link] = telegramMatch;
                             return (
                               <div className="flex flex-col gap-2">
-                                <ChatBubbleMessage
+                                {/* <ChatBubbleMessage
                                   variant={
                                     message.sender === "web"
                                       ? "sent"
@@ -882,7 +1026,7 @@ const [replyingMessage, setReplyingMessage] = useState<{
                                   time={formatDate(message.timestamp)}
                                 >
                                   Click here to start Telegram
-                                </ChatBubbleMessage>
+                                </ChatBubbleMessage> */}
 
                                 <ChatBubbleMessage
                                   variant={
@@ -891,12 +1035,13 @@ const [replyingMessage, setReplyingMessage] = useState<{
                                       : "received"
                                   }
                                   isSender={message.sender === "web"}
-                                  user={"Agent"}
+                                  user={agentName}
                                   time={new Date(
                                     message.timestamp
                                   ).toLocaleTimeString()}
                                 >
                                   <div className="flex flex-col gap-2">
+                                  Click here to start Telegram
                                     <Button
                                       key={link}
                                       variant="bgWhite"
@@ -925,25 +1070,27 @@ const [replyingMessage, setReplyingMessage] = useState<{
                             return (
                               <div className="flex flex-col gap-2">
                                 <ChatBubbleMessage
+                                  brandColor={metadata?.brand_color}
                                   variant={
                                     message.sender === "web"
                                       ? "sent"
                                       : "received"
                                   }
                                   isSender={message.sender === "web"}
-                                  user={"Agent"}
+                                  user={agentName}
                                   time={formatDate(message.timestamp)}
                                 >
                                   Click here to start WhatsApp
                                 </ChatBubbleMessage>
                                 <ChatBubbleMessage
+                                  brandColor={metadata?.brand_color}
                                   variant={
                                     message.sender === "web"
                                       ? "sent"
                                       : "received"
                                   }
                                   isSender={message.sender === "web"}
-                                  user={"Agent"}
+                                  user={agentName}
                                   time={new Date(
                                     message.timestamp
                                   ).toLocaleTimeString()}
@@ -979,14 +1126,16 @@ const [replyingMessage, setReplyingMessage] = useState<{
                             console.log("newMsg", newMsg);
                             return (
                               <ChatBubbleMessage
+                              brandColor={metadata?.brand_color}
                               variant={   message.sender === "web" ? "sent" : "received"}
-                              user={message.sender === "web" ? "you" : "Agent"}
+                              user={message.sender === "web" ? "you" : agentName}
                               isSender={message.sender === "web"}
                               className="border"
                               time={formatDate(message.timestamp)}
                             >
                               <ReplyAndEditBox
-                                replyToMessage={{msg: originalMsg, user: message.sender === "web" ? "Agent" : "You"}}
+                                brandColor={metadata?.brand_color}
+                                replyToMessage={{msg: originalMsg, user: message.sender === "web" ? agentName : "You"}}
                                
                                 onCancel={()=>{
                                   console.log('')
@@ -1004,11 +1153,12 @@ const [replyingMessage, setReplyingMessage] = useState<{
                           else if (deleteMatch) {
                             return (
                               <ChatBubbleMessage
+                                brandColor={metadata?.brand_color}
                                 variant={
                                   message.sender === "web" ? "sent" : "received"
                                 }
                                 isSender={message.sender === "web"}
-                                user={"Agent"}
+                                user={agentName}
                                 time={formatDate(message.timestamp)}
                               >
                                <span className="text-gray-200 italic">{message?.msg}</span>
@@ -1018,14 +1168,15 @@ const [replyingMessage, setReplyingMessage] = useState<{
                           else {
                             return (
                               <ChatBubbleMessage
+                                brandColor={metadata?.brand_color}
                                 variant={
                                   message.sender === "web" ? "sent" : "received"
                                 }
                                 isSender={message.sender === "web"}
-                                user={"Agent"}
+                                user={agentName}
                                 time={formatDate(message.timestamp)}
                               >
-                                {message?.msg}
+                                {message?.msg} - test
                               </ChatBubbleMessage>
                             );
                           }
@@ -1036,7 +1187,8 @@ const [replyingMessage, setReplyingMessage] = useState<{
                             <ChatBubbleMessage
                               variant="received2"
                               isSender={true}
-                              user={"Agent"}
+                              user={agentName}
+                              
                             >
                               <div className="flex flex-col gap-2">
                                 {availableContacts.map((contact) => (
@@ -1147,6 +1299,25 @@ const [replyingMessage, setReplyingMessage] = useState<{
               </div>
             )}
             <div ref={messagesEndRef} />
+
+            {/* Add loading bubble */}
+            {isLoading && (
+              <ChatBubble variant="received">
+                <ChatBubbleAvatar fallback={agentName?.[0]} />
+                <ChatBubbleMessage 
+                  variant="received"
+                  isSender={false}
+                  user={agentName}
+                  time={formatDate(Date.now())}
+                >
+                  <div className="flex gap-1">
+                    <span className="animate-bounce">.</span>
+                    <span className="animate-bounce delay-100">.</span>
+                    <span className="animate-bounce delay-200">.</span>
+                  </div>
+                </ChatBubbleMessage>
+              </ChatBubble>
+            )}
           </ChatMessageList>
         </ExpandableChatBody>
         <ExpandableChatFooter className="flex flex-col gap-[5px] items-start">
@@ -1179,7 +1350,7 @@ const [replyingMessage, setReplyingMessage] = useState<{
                 <DialogHeader>
                   <DialogTitle className="text-left">
                     {action === "restart" ? (
-                      <div className="flex items-center gap-2 bg-[#2970FF] rounded w-fit p-2 mb-3">
+                      <div className={`flex items-center gap-2 bg-[${metadata?.brand_color}] rounded w-fit p-2 mb-3`}>
                         <RotateCcw className="p-1" color="#ffffff" />
                       </div>
                     ) : (
@@ -1199,9 +1370,10 @@ const [replyingMessage, setReplyingMessage] = useState<{
                   <Button
                     className={`w-full ${
                       action === "restart"
-                        ? "bg-[#2970FF] text-white hover:bg-[#2C7DFF]"
+                        ? `bg-[${metadata?.brand_color}] text-white hover:bg-[${metadata?.brand_color}]`
                         : "bg-destructive text-destructive-foreground hover:bg-destructive/95"
                     }`}
+                    style={{backgroundColor: metadata?.brand_color}}
                     onClick={async () => {
                       if (action === "restart") {
                         setChats([]);

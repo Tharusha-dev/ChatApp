@@ -46,6 +46,7 @@ app.use(express.raw({ type: "application/json" }));
 
 const server = createServer(app);
 const io = new Server(server, {
+  connectionStateRecovery: {},
   cors: {
     origin: "*",
     methods: ["GET", "POST"],
@@ -507,13 +508,13 @@ app.post(
   "/web/join",
   asyncHandler(async (req, res) => {
     logger("Route: /web/join - Incoming data: " + JSON.stringify(req.body));
-    const { initialMessage, name, email, websiteId, currentUrl, type } =
+    const { initialMessage, name, email, websiteId, currentUrl, ip } =
       req.body;
-    const ip =
-      req.ip ||
-      req.connection.remoteAddress ||
-      req.socket.remoteAddress ||
-      req.headers["x-forwarded-for"]?.split(",")[0];
+    // const ip =
+    //   req.ip ||
+    //   req.connection.remoteAddress ||
+    //   req.socket.remoteAddress ||
+    //   req.headers["x-forwarded-for"]?.split(",")[0];
 
     // Get User-Agent
     const userAgent = req.headers["user-agent"];
@@ -587,12 +588,12 @@ app.post(
     logger(
       "Route: /telegram/join - Incoming data: " + JSON.stringify(req.body)
     );
-    const { websiteId, currentUrl } = req.body;
-    const ip =
-      req.ip ||
-      req.connection.remoteAddress ||
-      req.socket.remoteAddress ||
-      req.headers["x-forwarded-for"]?.split(",")[0];
+    const { websiteId, currentUrl, ip } = req.body;
+    // const ip =
+    //   req.ip ||
+    //   req.connection.remoteAddress ||
+    //   req.socket.remoteAddress ||
+    //   req.headers["x-forwarded-for"]?.split(",")[0];
 
     // Get User-Agent
     const userAgent = req.headers["user-agent"];
@@ -665,12 +666,12 @@ app.post(
     logger(
       "Route: /whatsapp/join - Incoming data: " + JSON.stringify(req.body)
     );
-    const { websiteId, currentUrl } = req.body;
-    const ip =
-      req.ip ||
-      req.connection.remoteAddress ||
-      req.socket.remoteAddress ||
-      req.headers["x-forwarded-for"]?.split(",")[0];
+    const { websiteId, currentUrl, ip } = req.body;
+    // const ip =
+    //   req.ip ||
+    //   req.connection.remoteAddress ||
+    //   req.socket.remoteAddress ||
+    //   req.headers["x-forwarded-for"]?.split(",")[0];
 
     // Get User-Agent
     const userAgent = req.headers["user-agent"];
@@ -778,6 +779,9 @@ app.post(
     res.json(website?.metadata);
   })
 );
+
+
+
 
 app.post(
   "/worker/chat-msg",
@@ -916,19 +920,26 @@ app.post(
     );
 
     const roomSize = io.sockets.adapter.rooms.get(req.body.userToken)?.size;
+    
+    console.log("roomSize", roomSize);
 
-    if (roomSize === 1) {
-      io.to(req.body.userToken).emit("party-disconnected", {
-        chatId: req.body.chatId,
-        party: "worker",
-      });
-    } else {
-      io.to(req.body.userToken).emit("chat-msg", {
-        chatId: req.body.chatId,
-        userToken: req.body.userToken,
-        msg: { ...req.body.msg, sender: decodedToken?.type },
-      });
-    }
+    io.to(req.body.userToken).emit("chat-msg", {
+      chatId: req.body.chatId,
+      userToken: req.body.userToken,
+      msg: { ...req.body.msg, sender: decodedToken?.type },
+    });
+    // if (roomSize === 1) {
+    //   io.to(req.body.userToken).emit("party-disconnected", {
+    //     chatId: req.body.chatId,
+    //     party: "worker",
+    //   });
+    // } else {
+    //   io.to(req.body.userToken).emit("chat-msg", {
+    //     chatId: req.body.chatId,
+    //     userToken: req.body.userToken,
+    //     msg: { ...req.body.msg, sender: decodedToken?.type },
+    //   });
+    // }
     console.log("========================");
     console.log("chat send to room", req.body.userToken);
     console.log("========================");
@@ -1549,6 +1560,13 @@ app.get(
   })
 );
 
+
+app.get("/web/data", asyncHandler(async (req, res) => {
+  const { websiteId } = req.query;
+  const website = await websitesCollection.findOne({ _id: new ObjectId(websiteId) });
+  res.json({ icon: website?.chat_icon, color: website?.metadata?.brand_color, metadata: website?.metadata });
+}));
+
 // add to buffer
 io.use((socket, next) => {
   logger(
@@ -1753,19 +1771,29 @@ io.use((socket, next) => {
     logger(data);
     // Admin joins the room
     let decodedToken;
+    let decodedWorkerToken;
     try {
       decodedToken = jwt.verify(jsonData.webToken, tokenSecret);
+      decodedWorkerToken = jwt.verify(jsonData.workerToken, tokenSecret);
     } catch (error) {
       console.log(error);
       return;
     }
     console.log("8888888888888888888888888");
+    console.log(decodedWorkerToken)
 
     if (decodedToken.type === "web") {
       console.log("decondec web");
 
+      const worker = await workersCollection.findOne({ _id : new ObjectId(decodedWorkerToken?.id) }).catch((err) => {
+        logger(`Database error while finding worker: ${err.message}`);
+        throw { status: 500, message: "Database error occurred" };
+      });
+  
+      console.log(worker.name)
+
       io.to(jsonData.webToken).emit("worker-buffer-accept", {
-        workerName: data?.workerName || "Agent",
+        workerName: worker?.name || "Agent",
       });
     } else {
       console.log("decondec not web");
@@ -1793,6 +1821,12 @@ io.use((socket, next) => {
     // const jsonData = data
     // await addChatToWorker(jsonData.workerToken, jsonData.chatId);
     console.log("reconnecting to ", data.webToken)
+    socket.join(data.webToken);
+  });
+
+  socket.on("web-reconnect", async (data) => {
+    logger("Socket: web-reconnect - Incoming data: " + data);
+    // data : {webToken : "token"}
     socket.join(data.webToken);
   });
 
@@ -1831,160 +1865,165 @@ io.use((socket, next) => {
       }
     });
   });
+
+  socket.on("heartbeat", () => {
+    // Optional: Log or handle heartbeat
+    logger("Received heartbeat from client");
+  });
 });
 
-// telegramBot.on(
-//   "message",
-//   asyncHandler(async (msg) => {
-//     const msgText = msg?.text;
-//     const telegramChatId = msg.chat.id;
-//     console.log("msg", msg);
-//     console.log(msg);
-//     if (msgText?.startsWith("/start")) {
-//       console.log("start");
-//       const mongoChatId = msgText.split(" ")?.[1];
+telegramBot.on(
+  "message",
+  asyncHandler(async (msg) => {
+    const msgText = msg?.text;
+    const telegramChatId = msg.chat.id;
+    console.log("msg", msg);
+    console.log(msg);
+    if (msgText?.startsWith("/start")) {
+      console.log("start");
+      const mongoChatId = msgText.split(" ")?.[1];
 
-//       if (!mongoChatId) return;
-//       // telegramInitiate(msg.chat.username, telegramChatId, mongoChatId);
+      if (!mongoChatId) return;
+      // telegramInitiate(msg.chat.username, telegramChatId, mongoChatId);
 
-//       const chat = await chatsCollection.findOne({
-//         _id: new ObjectId(mongoChatId),
-//         }).catch((e)=>{
-//           console.log(e);
-//           return null;
-//         });
-//       if (!chat) return;
+      const chat = await chatsCollection.findOne({
+        _id: new ObjectId(mongoChatId),
+        }).catch((e)=>{
+          console.log(e);
+          return null;
+        });
+      if (!chat) return;
     
-//       console.log("========================");
-//       console.log("/start chat monogoChatId", mongoChatId);
-//       console.log("/start chat telegramChatId", telegramChatId);
-//       console.log("========================");
+      console.log("========================");
+      console.log("/start chat monogoChatId", mongoChatId);
+      console.log("/start chat telegramChatId", telegramChatId);
+      console.log("========================");
 
-//       await chatsCollection
-//         .updateOne(
-//           { _id: new ObjectId(mongoChatId) },
-//           {
-//             $set: {
-//               telegramChatId: telegramChatId,
-//               webEmail: msg.chat.username,
-//               step: 0,
-//               // webName: `${msg.chat.first_name} ${msg.chat.last_name}`,
-//             },
-//           }
-//         )
-//         .catch((err) => {
-//           logger(`Database error while updating chat: ${err.message}`);
-//           console.log({ status: 500, message: "Database error occurred" });
-//         });
-//       telegramBot.sendMessage(telegramChatId, "What is your name?");
-//     } else {
-//       console.log("non /start telegram chat");
+      await chatsCollection
+        .updateOne(
+          { _id: new ObjectId(mongoChatId) },
+          {
+            $set: {
+              telegramChatId: telegramChatId,
+              webEmail: msg.chat.username,
+              step: 0,
+              // webName: `${msg.chat.first_name} ${msg.chat.last_name}`,
+            },
+          }
+        )
+        .catch((err) => {
+          logger(`Database error while updating chat: ${err.message}`);
+          console.log({ status: 500, message: "Database error occurred" });
+        });
+      telegramBot.sendMessage(telegramChatId, "What is your name?");
+    } else {
+      console.log("non /start telegram chat");
 
-//       const chats = await chatsCollection
-//         .find({ telegramChatId: telegramChatId })
-//         .toArray();
+      const chats = await chatsCollection
+        .find({ telegramChatId: telegramChatId })
+        .toArray();
 
-//       if (!chats) return;
+      if (!chats) return;
 
-//       const chat = chats.reduce((latest, current) => {
-//         // If we find a chat with empty chat array, return it immediately
-//         if (current.chat.length === 0) {
-//           return current;
-//         }
+      const chat = chats.reduce((latest, current) => {
+        // If we find a chat with empty chat array, return it immediately
+        if (current.chat.length === 0) {
+          return current;
+        }
 
-//         // If latest is empty chat array, keep looking
-//         if (latest.chat.length === 0) {
-//           return current;
-//         }
+        // If latest is empty chat array, keep looking
+        if (latest.chat.length === 0) {
+          return current;
+        }
 
-//         // Compare timestamps of first messages
-//         const currentTimestamp = current.chat[0]?.timestamp || 0;
-//         const latestTimestamp = latest.chat[0]?.timestamp || 0;
+        // Compare timestamps of first messages
+        const currentTimestamp = current.chat[0]?.timestamp || 0;
+        const latestTimestamp = latest.chat[0]?.timestamp || 0;
 
-//         return currentTimestamp > latestTimestamp ? current : latest;
-//       }, chats[0] || null);
+        return currentTimestamp > latestTimestamp ? current : latest;
+      }, chats[0] || null);
 
-//       if (chat) {
-//         // telegramBot.sendMessage(chatId, msgText);
+      if (chat) {
+        // telegramBot.sendMessage(chatId, msgText);
 
-//         console.log("latest chat id =>", chat._id);
+        console.log("latest chat id =>", chat._id);
 
-//         if (chat.chat.length > 0) {
-//           console.log("chat-msg continue conversation");
-//           console.log("chat", chat);
-//           //file_unique_id
-//           if (msg?.photo) {
-//             const photos = msg?.photo;
-//             const biggestPhoto = photos[photos.length - 1];
-//             const downloadURL = await getDownloadFilePath(biggestPhoto.file_id);
-//             if (!downloadURL) return;
-//             console.log("downloadURL", downloadURL);
-//             const fileMsg = `[file][link="${downloadURL}"][name="${biggestPhoto.file_unique_id}"][type="image/png"][/file]`;
-//             io.to(chat.userToken).emit("chat-msg", {
-//               chatId: chat._id.toString(),
-//               userToken: chat.userToken,
-//               msg: { msg: fileMsg, timestamp: Date.now(), sender: "web" },
-//             });
-//             await addMsgToChat(
-//               chat._id.toString(),
-//               { msg: fileMsg, timestamp: Date.now(), sender: "web" },
-//               "web"
-//             );
-//           } else if (msg?.document) {
-//             // const photos = msg?.photo
-//             const document = msg?.document;
-//             const downloadURL = await getDownloadFilePath(document.file_id);
-//             if (!downloadURL) return;
-//             console.log("downloadURL", downloadURL);
-//             const fileMsg = `[file][link="${downloadURL}"][name="${document.file_name}"][type="${document.mime_type}"][/file]`;
-//             io.to(chat.userToken).emit("chat-msg", {
-//               chatId: chat._id.toString(),
-//               userToken: chat.userToken,
-//               msg: { msg: fileMsg, timestamp: Date.now(), sender: "web" },
-//             });
-//             await addMsgToChat(
-//               chat._id.toString(),
-//               { msg: fileMsg, timestamp: Date.now(), sender: "web" },
-//               "web"
-//             );
-//           } else {
-//             io.to(chat.userToken).emit("chat-msg", {
-//               chatId: chat._id.toString(),
-//               userToken: chat.userToken,
-//               msg: { msg: msgText, timestamp: Date.now(), sender: "web" },
-//             });
+        if (chat.chat.length > 0) {
+          console.log("chat-msg continue conversation");
+          console.log("chat", chat);
+          //file_unique_id
+          if (msg?.photo) {
+            const photos = msg?.photo;
+            const biggestPhoto = photos[photos.length - 1];
+            const downloadURL = await getDownloadFilePath(biggestPhoto.file_id);
+            if (!downloadURL) return;
+            console.log("downloadURL", downloadURL);
+            const fileMsg = `[file][link="${downloadURL}"][name="${biggestPhoto.file_unique_id}"][type="image/png"][/file]`;
+            io.to(chat.userToken).emit("chat-msg", {
+              chatId: chat._id.toString(),
+              userToken: chat.userToken,
+              msg: { msg: fileMsg, timestamp: Date.now(), sender: "web" },
+            });
+            await addMsgToChat(
+              chat._id.toString(),
+              { msg: fileMsg, timestamp: Date.now(), sender: "web" },
+              "web"
+            );
+          } else if (msg?.document) {
+            // const photos = msg?.photo
+            const document = msg?.document;
+            const downloadURL = await getDownloadFilePath(document.file_id);
+            if (!downloadURL) return;
+            console.log("downloadURL", downloadURL);
+            const fileMsg = `[file][link="${downloadURL}"][name="${document.file_name}"][type="${document.mime_type}"][/file]`;
+            io.to(chat.userToken).emit("chat-msg", {
+              chatId: chat._id.toString(),
+              userToken: chat.userToken,
+              msg: { msg: fileMsg, timestamp: Date.now(), sender: "web" },
+            });
+            await addMsgToChat(
+              chat._id.toString(),
+              { msg: fileMsg, timestamp: Date.now(), sender: "web" },
+              "web"
+            );
+          } else {
+            io.to(chat.userToken).emit("chat-msg", {
+              chatId: chat._id.toString(),
+              userToken: chat.userToken,
+              msg: { msg: msgText, timestamp: Date.now(), sender: "web" },
+            });
 
-//             await addMsgToChat(
-//               chat._id.toString(),
-//               { msg: msgText, timestamp: Date.now(), sender: "web" },
-//               "web"
-//             );
-//           }
-//         } else {
+            await addMsgToChat(
+              chat._id.toString(),
+              { msg: msgText, timestamp: Date.now(), sender: "web" },
+              "web"
+            );
+          }
+        } else {
 
-//           if(chat?.step === 0){
-//             //get name
-//             await chatsCollection.updateOne({_id: chat._id}, {$set: {step: 1, webName: msgText}})
-//             telegramBot.sendMessage(telegramChatId, "What is your email?");
-//           }else if(chat?.step === 1){
-//             //get email
-//             const website = await websitesCollection.findOne({
-//               _id: new ObjectId(chat?.websiteId),
-//             });
+          if(chat?.step === 0){
+            //get name
+            await chatsCollection.updateOne({_id: chat._id}, {$set: {step: 1, webName: msgText}})
+            telegramBot.sendMessage(telegramChatId, "What is your email?");
+          }else if(chat?.step === 1){
+            //get email
+            const website = await websitesCollection.findOne({
+              _id: new ObjectId(chat?.websiteId),
+            });
       
-//             await chatsCollection.updateOne({_id: chat._id}, {$set: {step: 2, userEmail: msgText}})
-//             telegramBot.sendMessage(telegramChatId, website?.metadata?.msg_4);
-//           }else if(chat?.step === 2){
-//             //get initial req
-//           telegramAddToBuffer(msg, telegramChatId, chat, msgText);
+            await chatsCollection.updateOne({_id: chat._id}, {$set: {step: 2, userEmail: msgText}})
+            telegramBot.sendMessage(telegramChatId, website?.metadata?.msg_4);
+          }else if(chat?.step === 2){
+            //get initial req
+          telegramAddToBuffer(msg, telegramChatId, chat, msgText);
 
-//           }
-//           console.log("telegramAddToBuffer", chat._id.toString());
-//         }
-//       }
-//     }
-//   })
-// );
+          }
+          console.log("telegramAddToBuffer", chat._id.toString());
+        }
+      }
+    }
+  })
+);
 
 
 
@@ -2280,7 +2319,7 @@ async function telegramAddToBuffer(msg, chatId, chatDoc, initialMessage) {
       timestamp: Date.now(),
     },
     chatId: chatDoc?._id.toString(),
-    webName: `${msg?.chat?.first_name} ${msg?.chat?.last_name}`,
+    webName: `${msg?.chat?.first_name}`,
     websiteId: chatDoc?.websiteId.toString(),
     webEmail: msg?.chat?.username,
     metadata: chatDoc?.metadata,
@@ -2307,7 +2346,7 @@ async function telegramAddToBuffer(msg, chatId, chatDoc, initialMessage) {
       timestamp: Date.now(),
     },
     chatId: chatDoc?._id.toString(),
-    webName: `${msg?.chat?.first_name} ${msg?.chat?.last_name}`,
+    webName: `${msg?.chat?.first_name}`,
     websiteId: chatDoc?.websiteId.toString(),
     webEmail: msg?.chat?.username,
     metadata: chatDoc?.metadata,
@@ -2389,7 +2428,9 @@ async function whatsappAddToBuffer(msg, whatsappChatId, chatDoc, initialMessage)
     webEmail: msg?.from?.split("@")[0],
     metadata: chatDoc?.metadata,
     websiteDomain: website?.domain,
+    userEmail: chatDoc?.userEmail,
   });
+
 
   console.log("========================");
   console.log("web joined room", chatDoc?.userToken);
@@ -2411,9 +2452,65 @@ async function whatsappAddToBuffer(msg, whatsappChatId, chatDoc, initialMessage)
     webEmail: msg?.from?.split("@")[0],
     metadata: chatDoc?.metadata,
     websiteDomain: website?.domain,
+    userEmail: chatDoc?.userEmail,
   });
 }
 
 function logger(msg) {
   console.log(`[${new Date().toISOString()}] |  ${msg}`);
 }
+
+// Function to handle chat timeouts
+async function handleChatTimeouts() {
+  const thirtyMinutesAgo = Date.now() - 30 * 60 * 1000; // 30 minutes in milliseconds
+  
+  try {
+    // First find chats that need updating
+    const inactiveChats = await chatsCollection.find({
+      'disconnect': { 
+        $exists: true,
+        $eq: { time: 0, party: "" }  // Matches exact disconnect object structure
+      },
+      'chat': { 
+        $exists: true, 
+        $ne: [] 
+      }
+    }).toArray();
+
+    // Filter and update chats with old last messages
+    for (const chat of inactiveChats) {
+      const lastMessage = chat.chat[chat.chat.length - 1];
+      if (lastMessage && lastMessage.timestamp < thirtyMinutesAgo) {
+        await chatsCollection.updateOne(
+          { _id: chat._id },
+          {
+            $set: {
+              disconnect: {
+                time: Date.now(),
+                party: 'web'
+              }
+            }
+          }
+        );
+        logger(`Updated inactive chat ${chat._id} as disconnected`);
+      }
+    }
+
+    // Clean up old buffer entries
+    const bufferResult = await bufferCollection.deleteMany({
+      'initialMessage.timestamp': { $lt: thirtyMinutesAgo }
+    });
+
+    if (bufferResult.deletedCount > 0) {
+      logger(`Cleaned up ${bufferResult.deletedCount} old buffer entries`);
+    }
+  } catch (error) {
+    logger(`Error in handleChatTimeouts: ${error.message}`);
+  }
+}
+
+// Run the cleanup every 10 minutes
+setInterval(handleChatTimeouts, 10 * 60 * 1000);
+
+// Run once on server start
+handleChatTimeouts();

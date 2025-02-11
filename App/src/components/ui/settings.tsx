@@ -24,7 +24,7 @@ export default function SettingsDropdown() {
             <DropdownMenuLabel>Settings</DropdownMenuLabel>
       <DropdownMenuSeparator />
       <DropdownMenuItem onClick={() => {
-        deleteCookie('userToken');
+        deleteCookie('chatzu-userToken');
         router.push('/login');
       }}>
       

@@ -46,6 +46,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ChatIconDropdown } from "./chatIconDropdown";
 import SettingsDropdown from "./settings";
 import { WHATSAPP_CLIENTS } from "@/lib/config";
+import { HexColorPicker } from "react-colorful";
 
 export default function Websites() {
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -70,6 +71,7 @@ export default function Websites() {
       allow_telegram: true,
       allow_whatsapp: true,
       selected_whatsapp_number: WHATSAPP_CLIENTS[0].number,
+      brand_color: "#000000",
     },
   });
 
@@ -124,10 +126,7 @@ export default function Websites() {
             /{domain}/g,
             newWebsite.domain
           ),
-          msg_1: newWebsite.metadata.msg_1.replace(
-            /{domain}/g,
-            newWebsite.domain
-          ),
+          msg_1: "Welcome to support. How do you want to contact us? Whatsapp, Telegram, Live chat.",
           msg_2: newWebsite.metadata.msg_2.replace(
             /{domain}/g,
             newWebsite.domain
@@ -143,6 +142,7 @@ export default function Websites() {
           allow_telegram: newWebsite.metadata.allow_telegram,
           allow_whatsapp: newWebsite.metadata.allow_whatsapp,
           selected_whatsapp_number: newWebsite.metadata.selected_whatsapp_number,
+          brand_color: newWebsite.metadata.brand_color,
         },
       });
 
@@ -422,15 +422,16 @@ export default function Websites() {
                     id="msg_1"
                     value={newWebsite.metadata.msg_1}
                     className="col-span-3"
-                    onChange={(e) =>
-                      setNewWebsite({
-                        ...newWebsite,
-                        metadata: {
-                          ...newWebsite.metadata,
-                          msg_1: e.target.value,
-                        },
-                      })
-                    }
+                    // disabled = {true}
+                    // onChange={(e) =>
+                    //   setNewWebsite({
+                    //     ...newWebsite,
+                    //     metadata: {
+                    //       ...newWebsite.metadata,
+                    //       msg_1: e.target.value,
+                    //     },
+                    //   })
+                    // }
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
@@ -559,6 +560,20 @@ export default function Websites() {
                     selectedIcon={newWebsite.chat_icon}
                   />
                 </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="chat_icon" className="text-right">
+              Brand Color
+            </Label>
+            <div className="col-span-2 flex items-center gap-4">
+              <HexColorPicker color={newWebsite.metadata.brand_color} onChange={(color) => {
+                setNewWebsite({ ...newWebsite, metadata: { ...newWebsite.metadata, brand_color: color } });
+              }} style={{width: "10rem", height: "10rem"}}/>
+              <div 
+                style={{backgroundColor: newWebsite.metadata.brand_color}} 
+                className="w-10 h-10 rounded-sm shadow-md border border-gray-200"
+              />
+            </div>
+          </div>
               </div>
               <Button onClick={handleAddWebsite}>Add Website</Button>
             </DialogContent>

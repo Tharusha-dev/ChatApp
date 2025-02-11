@@ -56,7 +56,7 @@ export default function ChatDashboard({
   const [conversationSearch, setConversationSearch] = useState<string>("");
   const [selectedDomains, setSelectedDomains] = useState<string[]>([]);
 
-  const workerToken = getCookie("userToken") as string;
+  const workerToken = getCookie("chatzu-userToken") as string;
 
   const [newChats, setNewChats] = useState<any[]>([]);
 
@@ -96,7 +96,7 @@ export default function ChatDashboard({
 
   const router = useRouter();
   useEffect(() => {
-    if (!hasCookie("userToken")) {
+    if (!hasCookie("chatzu-userToken")) {
       router.push("/login");
     }
   }, []);
@@ -245,8 +245,10 @@ export default function ChatDashboard({
                       type={chat?.type}
                       webName={chat?.webName}
                       webEmail={chat?.webEmail}
+                      userEmail={chat?.userEmail}
                       metadata={chat?.metadata}
                       websiteDomain={chat?.websiteDomain}
+                      isActive={chat?.chatId === activeChat}
                       isDisconnected={chat?.disconnect?.time > 0 || false}
                       onClick={() => {
                         setActiveChat(chat.chatId);
@@ -286,7 +288,7 @@ export default function ChatDashboard({
                 key={activeChat}
                 chatId={activeChat}
                 newChat={newChats}
-                workerToken={getCookie("userToken") as string}
+                workerToken={getCookie("chatzu-userToken") as string}
                 refresh={refreshActiveChat} 
                 socket={socket}
                 setWorkerChats={setWorkerChatsWithSort}

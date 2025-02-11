@@ -27,7 +27,7 @@ export default function RequestsPopup({
   setWorkerChats: any;
   setBufferUsers: any;
 }) {
-  const workerToken = getCookie("userToken");
+  const workerToken = getCookie("chatzu-userToken");
 
   // Helper function to ensure unique users by chatId
   const addUniqueUser = (prevUsers: any[], newUser: any) => {

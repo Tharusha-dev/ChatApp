@@ -22,6 +22,7 @@ export interface Worker {
        allow_telegram: boolean;
        allow_whatsapp: boolean;
        selected_whatsapp_number: string;
+       brand_color: string;
     }
   }
   
