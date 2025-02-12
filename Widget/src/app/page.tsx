@@ -27,7 +27,7 @@ import { useCallback, useEffect, useState, useRef } from "react";
 
 import { Input } from "@/components/ui/input";
 import { Suspense } from "react";
-import { Check, Copy, CornerDownLeft, Edit, Icon, Reply, RotateCcw, Trash } from "lucide-react";
+import { Check, Copy, CornerDownLeft, Edit, Icon, Loader2, Reply, RotateCcw, Trash } from "lucide-react";
 //@ts-ignore
 import { FileIcon, defaultStyles } from "react-file-icon";
 
@@ -45,7 +45,7 @@ import { ReplyAndEditBox } from "@/components/ui/replyAndEditBox";
 
 export default function Home() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div><Loader2 className="animate-spin" /></div>}>
       <HomeContent />
     </Suspense>
   );
@@ -1350,7 +1350,9 @@ query: {
                 <DialogHeader>
                   <DialogTitle className="text-left">
                     {action === "restart" ? (
-                      <div className={`flex items-center gap-2 bg-[${metadata?.brand_color}] rounded w-fit p-2 mb-3`}>
+                      <div className={`flex items-center gap-2 bg-[${metadata?.brand_color}] rounded w-fit p-2 mb-3`}
+                        style={{backgroundColor: metadata?.brand_color}}
+                      >
                         <RotateCcw className="p-1" color="#ffffff" />
                       </div>
                     ) : (

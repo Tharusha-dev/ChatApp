@@ -116,12 +116,13 @@ const [socket, setSocket] = useState<Socket | null>(null);
     <Script> 
 
   
-var scr = document.createElement("script");
-scr.src = "./loader.js?v2" + "?ts=" + new Date().getTime();
-scr.setAttribute("website-id", "6767dc57db29917c2b71c8ce");
-scr.setAttribute("icon-url", "https://www.svgrepo.com/show/529475/chat-square.svg");
-document.getElementsByTagName("head")[0].appendChild(scr);
 
+
+var scr = document.createElement("script");
+scr.src = "https://chat.chatzu.ai/loader.js?v2" + "?ts=" + new Date().getTime();
+scr.setAttribute("website-id", "679b90de8a78ab649aff1a76");
+scr.setAttribute("icon-url", "https://www.svgrepo.com/show/529481/chat-round-dots.svg");
+document.getElementsByTagName("head")[0].appendChild(scr);
     
 </Script>
     

@@ -17,12 +17,12 @@ import { createTransport } from "nodemailer";
 import { MongoStore } from "wwebjs-mongo";
 import mongoose from "mongoose";
 
-const mongoUri = "mongodb://localhost:27017";
+const mongoUri = process.env.MONGO_URI || "mongodb://localhost:27017";
 const mongoClient = new MongoClient(mongoUri);
 
 // const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
-const TELEGRAM_BOT_TOKEN = "7827757019:AAFNwWXkEEgOZjOwGJ5MoSUhngC-7VEW0dQ"
-// const telegramBot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const telegramBot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
 
 const db = mongoClient.db("chatapp-admin");
 
@@ -35,8 +35,7 @@ const tokenSecret = "secret";
 const salt = 10;
 
 let whatsappClient_1;
-// const whatsappClient_1_NUMBER = process.env.WHATSAPP_CLIENT_1_NUMBER;
-const whatsappClient_1_NUMBER = "94718550509";
+const whatsappClient_1_NUMBER = process.env.WHATSAPP_CLIENT_1_NUMBER;
 
 
 const app = express();
@@ -797,7 +796,7 @@ app.post(
     const bufferRoomSize = io.sockets.adapter.rooms.get(req.body.userToken)?.size;
 
     // Check if there are any workers available (connected to buffer room)
-    const isWorkerConnected = bufferRoomSize > 0;
+    const isWorkerConnected = bufferRoomSize > 1
     if(!isWorkerConnected) return res.status(200).json({ reconnect: true });
 
     let decodedToken;
@@ -1627,10 +1626,16 @@ io.use((socket, next) => {
       // Check if chat exists in either collection
       const existingChat = await chatsCollection.findOne({
         _id: new ObjectId(socket.handshake.query.chatId),
+      }).catch((err) => {
+        console.log(err);
+        return null;
       });
 
       const existingBuffer = await bufferCollection.findOne({
         chatId: socket.handshake.query.chatId,
+      }).catch((err) => {
+        console.log(err);
+        return null;
       });
 
       if (existingBuffer) {
@@ -1657,17 +1662,7 @@ io.use((socket, next) => {
         return null;
       });
 
-      const bufferResult = await addBufferToDb({
-        type: "web",
-        userToken: socket.handshake.query.userToken,
-        initialMessage: initialMessage,
-        chatId: socket.handshake.query.chatId,
-        webName: socket.handshake.query.name,
-        websiteId: socket.handshake.query.websiteId,
-        websiteDomain: website?.domain,
-        webEmail: chat?.webEmail,
-        metadata: chat?.metadata,
-      });
+  
 
       //TODO : VALIDATE
       socket.join("web");
@@ -1678,7 +1673,35 @@ io.use((socket, next) => {
       console.log("web joined room", socket.handshake.query.userToken);
       console.log("========================");
 
+
+      if(existingChat){
+        return "done";
+      }
+      //webEmail
+      const oldUser = await chatsCollection.findOne({
+        webEmail:chat?.webEmail,
+      }).catch((err) => {
+        console.log(err);
+        return null;
+      });
+
+      // if(oldUser){
+      //   return "done";
+      // }
+
       //add buffer to db
+      const bufferResult = await addBufferToDb({
+        type: "web",
+        userToken: socket.handshake.query.userToken,
+        initialMessage: initialMessage,
+        chatId: socket.handshake.query.chatId,
+        webName: socket.handshake.query.name,
+        websiteId: socket.handshake.query.websiteId,
+        websiteDomain: website?.domain,
+        webEmail: chat?.webEmail,
+        metadata: chat?.metadata,
+        isOldUser: oldUser ? true : false,
+      });
 
       logger("sending : buffer-request");
       io.to(socket.handshake.query.websiteId).emit("buffer-request", {
@@ -1690,6 +1713,7 @@ io.use((socket, next) => {
         webEmail: chat?.webEmail,
         websiteDomain: website?.domain,
         metadata: chat?.metadata,
+        isOldUser: oldUser ? true : false,
       });
       logger(
         "Socket: web-chat-request - Outgoing buffer-request: " +
@@ -2310,6 +2334,14 @@ async function telegramAddToBuffer(msg, chatId, chatDoc, initialMessage) {
     return null;
   });  
 
+  const oldUser = await chatsCollection.findOne({
+    webEmail:msg?.chat?.username,
+  }).catch((err) => {
+    console.log(err);
+    return null;
+  });
+  
+
 
   const bufferResult = await addBufferToDb({
     userToken: chatDoc?.userToken,
@@ -2324,6 +2356,7 @@ async function telegramAddToBuffer(msg, chatId, chatDoc, initialMessage) {
     webEmail: msg?.chat?.username,
     metadata: chatDoc?.metadata,
     websiteDomain: website?.domain,
+    isOldUser: oldUser ? true : false,
   });
 
   //TODO : VALIDATE
@@ -2351,6 +2384,7 @@ async function telegramAddToBuffer(msg, chatId, chatDoc, initialMessage) {
     webEmail: msg?.chat?.username,
     metadata: chatDoc?.metadata,
     websiteDomain: website?.domain,
+    isOldUser: oldUser ? true : false,
   });
 }
 
@@ -2415,6 +2449,12 @@ async function whatsappAddToBuffer(msg, whatsappChatId, chatDoc, initialMessage)
     return null;
   });  
 
+  const oldUser = await chatsCollection.findOne({
+    webEmail:msg?.from?.split("@")[0],
+  }).catch((err) => {
+    console.log(err);
+    return null;
+  });
   const bufferResult = await addBufferToDb({
     userToken: chatDoc?.userToken,
     type: "whatsapp",
@@ -2429,6 +2469,7 @@ async function whatsappAddToBuffer(msg, whatsappChatId, chatDoc, initialMessage)
     metadata: chatDoc?.metadata,
     websiteDomain: website?.domain,
     userEmail: chatDoc?.userEmail,
+    isOldUser: oldUser ? true : false,
   });
 
 
@@ -2453,6 +2494,7 @@ async function whatsappAddToBuffer(msg, whatsappChatId, chatDoc, initialMessage)
     metadata: chatDoc?.metadata,
     websiteDomain: website?.domain,
     userEmail: chatDoc?.userEmail,
+    isOldUser: oldUser ? true : false,
   });
 }
 

@@ -8,7 +8,7 @@
 
         const websiteId = script.getAttribute("website-id");
 
-        const res = await fetch(`http://localhost:8000/web/data?websiteId=${websiteId}`);
+        const res = await fetch(`https://app.chatzu.ai/api/web/data?websiteId=${websiteId}`);
         const data = await res.json();
         const iconUrl = data.icon;
         const color = data.color;
@@ -56,8 +56,8 @@
             // }, 10);
         });
         
-        const widgetUrl = `http://localhost:3001/?websiteId=${websiteId}&currentUrl=${currentPageUrl}`;
-        // const widgetUrl = `https://chat.chatzu.ai/?websiteId=${websiteId}&currentUrl=${currentPageUrl}`;
+        // const widgetUrl = `http://localhost:3001/?websiteId=${websiteId}&currentUrl=${currentPageUrl}`;
+        const widgetUrl = `https://chat.chatzu.ai/?websiteId=${websiteId}&currentUrl=${currentPageUrl}`;
         iframe.src = widgetUrl;
 
         // Create toggle button
