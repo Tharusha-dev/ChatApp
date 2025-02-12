@@ -5,10 +5,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    environment:
-      - MONGO_URI=mongodb://db:27017
+    env_file:
+      - .env
     depends_on:
       - db
+    restart: always
 
   db:
     image: mongo:6
@@ -17,8 +18,9 @@ services:
       - mongo_data:/data/db
     environment:
       MONGO_INITDB_DATABASE: chatapp-admin
+    restart: always
     ports:
       - "27017:27017"
     command: mongod --bind_ip 0.0.0.0
 volumes:
-  mongo_data:
+  mongo_data:             

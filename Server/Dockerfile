@@ -23,7 +23,7 @@ RUN apt-get update \
 # Copy package.json and package-lock.json
 COPY package*.json ./
 
-RUN npm i puppeteer 
+RUN npm i puppeteer
 
 RUN npm install
 
