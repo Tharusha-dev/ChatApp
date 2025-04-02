@@ -56,8 +56,8 @@ function HomeContent() {
   const websiteId = queryParams.get("websiteId");
   const currentUrl = queryParams.get("currentUrl");
 
-  // const API_URL = "http://localhost:8000";
-  const API_URL =  "https://app.chatzu.ai/api";
+  const API_URL = "http://localhost:8000";
+  // const API_URL =  "https://app.chatzu.ai/api";
 
   // const WHATSAPP_NUMBER = "+94718550509"
   const WHATSAPP_NUMBER = "+447383545694";
@@ -375,12 +375,12 @@ const [replyingMessage, setReplyingMessage] = useState<{
     const data = await res.json();
     setToken(data.userToken);
     setChatId(data.chatId);
-    const newSocket = io("https://app.chatzu.ai", {
-      path: "/api/socket.io",
-query: {
-    // const newSocket = io(`${API_URL}`, {
-    //   path: "/socket.io",
-    //   query: {
+//     const newSocket = io("https://app.chatzu.ai", {
+//       path: "/api/socket.io",
+// query: {
+    const newSocket = io(`${API_URL}`, {
+      path: "/socket.io",
+      query: {
         type: "web-chat-request",
         name: name,
         userToken: data.userToken,

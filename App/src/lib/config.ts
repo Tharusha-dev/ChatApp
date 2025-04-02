@@ -1,4 +1,4 @@
-// export const API_URL = "http://localhost:8000";
+export const API_URL = "http://localhost:8000";
 
 
 // export const WHATSAPP_CLIENTS = [
@@ -10,7 +10,7 @@
 // ];
 
 
-export const API_URL = "https://app.chatzu.ai/api";
+// export const API_URL = "https://app.chatzu.ai/api";
 export const WHATSAPP_CLIENTS = [
   {
     id: "447383545694",
